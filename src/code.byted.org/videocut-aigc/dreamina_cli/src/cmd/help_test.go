@@ -145,7 +145,7 @@ func TestGeneratorHelpAlignedForHelpSubcommand(t *testing.T) {
 			args: []string{"help", "text2video"},
 			contains: []string{
 				"Submit a Dreamina text-to-video task.",
-				"seedance2.0fast -> video_resolution 720p; duration 4-15s",
+				"model_version: seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip",
 				`dreamina text2video --prompt="a cat running" --duration=5`,
 			},
 		},
@@ -153,7 +153,7 @@ func TestGeneratorHelpAlignedForHelpSubcommand(t *testing.T) {
 			args: []string{"help", "image2video"},
 			contains: []string{
 				"For multi-image storytelling, use multiframe2video; for full-reference mixed-media generation, use multimodal2video.",
-				"advanced model_version values: 3.0, 3.0fast, 3.0pro, 3.0_fast, 3.0_pro, 3.5pro, 3.5_pro, seedance2.0, seedance2.0fast",
+				"advanced model_version values: 3.0, 3.0fast, 3.0pro, 3.0_fast, 3.0_pro, 3.5pro, 3.5_pro, seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip",
 				`dreamina image2video --image=./first.png --prompt="camera push in"`,
 			},
 		},
@@ -211,7 +211,7 @@ func TestGeneratorHelpAlignedForCommandHelpFlag(t *testing.T) {
 	if !strings.Contains(text, "Upload two local images as first and last frames, then submit a Dreamina video generation task.") {
 		t.Fatalf("unexpected frames2video help output: %q", text)
 	}
-	if !strings.Contains(text, "supported values by model: 3.0/3.5pro -> 720p or 1080p; seedance2.0/seedance2.0fast -> 720p") {
+	if !strings.Contains(text, "supported values by model: 3.0/3.5pro -> 720p or 1080p; seedance2.0 family -> 720p") {
 		t.Fatalf("expected frames2video flag detail in help output: %q", text)
 	}
 	if !strings.Contains(text, `dreamina frames2video --first=./start.png --last=./end.png --prompt="season changes"`) {

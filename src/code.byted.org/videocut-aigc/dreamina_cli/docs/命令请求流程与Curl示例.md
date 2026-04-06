@@ -673,6 +673,11 @@ POST /dreamina/cli/v1/video_generate
 }
 ```
 
+说明：
+
+- 当前支持的 `model_key` 额外包含 `seedance2.0_vip`、`seedance2.0fast_vip`
+- 默认值仍然是 `seedance2.0fast`
+
 模拟 `curl`：
 
 ```bash
@@ -750,6 +755,11 @@ curl -X POST \
 }
 ```
 
+说明：
+
+- 高级配置路径的 `model_key` 现在也支持 `seedance2.0_vip`、`seedance2.0fast_vip`
+- 端点和 `generate_type` 没有变化，仍然是 `/dreamina/cli/v1/video_generate` + `firstFrameVideoByConfig`
+
 模拟 `curl`：
 
 ```bash
@@ -782,6 +792,11 @@ curl -X POST \
 1. 上传首帧和尾帧。
 2. 拿到两个 `resource_id`。
 3. 调视频生成接口。
+
+补充：
+
+- `model_key` 可选值除了原来的 `3.0`、`3.5pro`、`seedance2.0`、`seedance2.0fast`，还包括 `seedance2.0_vip`、`seedance2.0fast_vip`
+- 仅模型集合变更，接口和 `generate_type` 不变
 
 模拟 `curl`：
 
@@ -857,6 +872,7 @@ curl -X POST \
 - 不能只有音频，至少要有图片或视频。
 - 2026-04-05 实测确认：最小可行重放可以只传 `image_resource_id_list`，`video_resource_id_list` 和 `audio_resource_id_list` 可为空数组。
 - 同日也已验证 CLI 端可以走“图片 + 视频 + 音频”完整上传链路并成功提交。
+- 当前 `model_key` 还支持 `seedance2.0_vip`、`seedance2.0fast_vip`，端点和 `generate_type` 保持不变。
 - 当前 smoke 脚本中的 `curl:multimodal2video` 会优先从最近一次 `cli:multimodal2video` 对应的 `tasks.db.result_json` 读取 `request.*_resource_id_list` / `uploaded_*`，自动补全图片、视频、音频三类列表；若本地库拿不到，再回退到 `history/query` 兜底，最后才退回 image-only 最小 payload。
 - 从 2026-04-05 起，`curl:multimodal2video` 的标准 smoke 结果页还会额外写出 `payload_mode`、`image_resource_id`、`video_resource_id`、`audio_resource_id` 摘要，方便直接判断本次重放用了哪组资源。
 
@@ -1373,7 +1389,7 @@ text2video:
 
 | 命令 | 上传资源 | 最终接口 | generate_type | 当前检查点 |
 | --- | --- | --- | --- | --- |
-| `text2video` | 否 | `/dreamina/cli/v1/video_generate` | `text2VideoByConfig` | 确认默认模型 `seedance2.0fast` |
+| `text2video` | 否 | `/dreamina/cli/v1/video_generate` | `text2VideoByConfig` | 确认默认模型 `seedance2.0fast`，且 `_vip` 变体仍走同端点/同 payload 结构 |
 | `image2video` | 是 | `/dreamina/cli/v1/video_generate` | `image2video` 或 `firstFrameVideoByConfig` | 确认高级参数触发 by-config |
 | `frames2video` | 是 | `/dreamina/cli/v1/video_generate` | `startEndFrameVideoByConfig` | 确认首尾帧字段名 |
 | `multiframe2video` | 是 | `/dreamina/cli/v1/video_generate` | `multiFrame2video` | 确认 `prompt_list/duration_list` 数量 |

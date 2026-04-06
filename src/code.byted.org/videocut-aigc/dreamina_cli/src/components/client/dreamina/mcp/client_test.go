@@ -492,6 +492,66 @@ func TestImage2VideoByConfigRequestUsesDedicatedPayload(t *testing.T) {
 	}
 }
 
+func TestImage2VideoByConfigRequestPassesThroughVIPModelKey(t *testing.T) {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/dreamina/cli/v1/video_generate" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read body: %v", err)
+		}
+		payload := map[string]any{}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			t.Fatalf("unmarshal body: %v", err)
+		}
+		if got := payload["generate_type"]; got != "firstFrameVideoByConfig" {
+			t.Fatalf("unexpected generate_type: %#v", got)
+		}
+		if got := payload["model_key"]; got != "seedance2.0fast_vip" {
+			t.Fatalf("unexpected model_key: %#v", got)
+		}
+		if got := payload["video_resolution"]; got != "720p" {
+			t.Fatalf("unexpected video_resolution: %#v", got)
+		}
+		writeMCPJSON(t, w, map[string]any{
+			"code":    "0",
+			"message": "ok",
+			"log_id":  "log-image2video-by-config-vip-1",
+			"data": map[string]any{
+				"submit_id": "submit-image2video-by-config-vip-1",
+			},
+		})
+	}))
+	defer server.Close()
+
+	httpCli, err := httpclient.New(server.URL)
+	if err != nil {
+		t.Fatalf("new http client: %v", err)
+	}
+	client := New(httpCli)
+
+	resp, err := client.Image2VideoByConfig(context.Background(), &Session{
+		Cookie: "sid=test",
+		UserID: "u-1",
+	}, &Image2VideoRequest{
+		FirstFrameResourceID: "image-resource-video-2",
+		Prompt:               "camera push in",
+		Duration:             5,
+		VideoResolution:      "720p",
+		ModelVersion:         "seedance2.0fast_vip",
+		UseByConfig:          true,
+	})
+	if err != nil {
+		t.Fatalf("Image2VideoByConfig failed: %v", err)
+	}
+	if resp.LogID != "log-image2video-by-config-vip-1" {
+		t.Fatalf("unexpected log id: %#v", resp.LogID)
+	}
+}
+
 func TestText2VideoRequestUsesOriginalVideoGeneratePayload(t *testing.T) {
 	t.Helper()
 
@@ -569,6 +629,59 @@ func TestText2VideoRequestUsesOriginalVideoGeneratePayload(t *testing.T) {
 	}
 }
 
+func TestText2VideoRequestPassesThroughVIPModelKey(t *testing.T) {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/dreamina/cli/v1/video_generate" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read body: %v", err)
+		}
+		payload := map[string]any{}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			t.Fatalf("unmarshal body: %v", err)
+		}
+		if got := payload["generate_type"]; got != "text2VideoByConfig" {
+			t.Fatalf("unexpected generate_type: %#v", got)
+		}
+		if got := payload["model_key"]; got != "seedance2.0_vip" {
+			t.Fatalf("unexpected model_key: %#v", got)
+		}
+		writeMCPJSON(t, w, map[string]any{
+			"code":    "0",
+			"message": "ok",
+			"log_id":  "log-text2video-vip-1",
+			"data": map[string]any{
+				"submit_id": "submit-text2video-vip-1",
+			},
+		})
+	}))
+	defer server.Close()
+
+	httpCli, err := httpclient.New(server.URL)
+	if err != nil {
+		t.Fatalf("new http client: %v", err)
+	}
+	client := New(httpCli)
+
+	resp, err := client.Text2Video(context.Background(), &Session{
+		Cookie: "sid=test",
+		UserID: "u-1",
+	}, &Text2VideoRequest{
+		Prompt:       "a cat walks slowly",
+		ModelVersion: "seedance2.0_vip",
+	})
+	if err != nil {
+		t.Fatalf("Text2Video failed: %v", err)
+	}
+	if resp.LogID != "log-text2video-vip-1" {
+		t.Fatalf("unexpected log id: %#v", resp.LogID)
+	}
+}
+
 func TestFrames2VideoRequestUsesOriginalVideoGeneratePayload(t *testing.T) {
 	t.Helper()
 
@@ -640,6 +753,61 @@ func TestFrames2VideoRequestUsesOriginalVideoGeneratePayload(t *testing.T) {
 		t.Fatalf("Frames2Video failed: %v", err)
 	}
 	if resp.LogID != "log-frames2video-1" {
+		t.Fatalf("unexpected log id: %#v", resp.LogID)
+	}
+}
+
+func TestFrames2VideoRequestPassesThroughVIPModelKey(t *testing.T) {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/dreamina/cli/v1/video_generate" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read body: %v", err)
+		}
+		payload := map[string]any{}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			t.Fatalf("unmarshal body: %v", err)
+		}
+		if got := payload["generate_type"]; got != "startEndFrameVideoByConfig" {
+			t.Fatalf("unexpected generate_type: %#v", got)
+		}
+		if got := payload["model_key"]; got != "seedance2.0fast_vip" {
+			t.Fatalf("unexpected model_key: %#v", got)
+		}
+		writeMCPJSON(t, w, map[string]any{
+			"code":    "0",
+			"message": "ok",
+			"log_id":  "log-frames2video-vip-1",
+			"data": map[string]any{
+				"submit_id": "submit-frames2video-vip-1",
+			},
+		})
+	}))
+	defer server.Close()
+
+	httpCli, err := httpclient.New(server.URL)
+	if err != nil {
+		t.Fatalf("new http client: %v", err)
+	}
+	client := New(httpCli)
+
+	resp, err := client.Frames2Video(context.Background(), &Session{
+		Cookie: "sid=test",
+		UserID: "u-1",
+	}, &Frames2VideoRequest{
+		FirstFrameResourceID: "image-first-1",
+		LastFrameResourceID:  "image-last-1",
+		Prompt:               "season changes",
+		ModelVersion:         "seedance2.0fast_vip",
+	})
+	if err != nil {
+		t.Fatalf("Frames2Video failed: %v", err)
+	}
+	if resp.LogID != "log-frames2video-vip-1" {
 		t.Fatalf("unexpected log id: %#v", resp.LogID)
 	}
 }
@@ -802,6 +970,60 @@ func TestMultiModal2VideoUsesOriginalVideoGeneratePayload(t *testing.T) {
 		t.Fatalf("MultiModal2Video failed: %v", err)
 	}
 	if resp.LogID != "log-multimodal2video-1" {
+		t.Fatalf("unexpected log id: %#v", resp.LogID)
+	}
+}
+
+func TestMultiModal2VideoPassesThroughVIPModelKey(t *testing.T) {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/dreamina/cli/v1/video_generate" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read body: %v", err)
+		}
+		payload := map[string]any{}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			t.Fatalf("unmarshal body: %v", err)
+		}
+		if got := payload["generate_type"]; got != "multiModal2VideoByConfig" {
+			t.Fatalf("unexpected generate_type: %#v", got)
+		}
+		if got := payload["model_key"]; got != "seedance2.0_vip" {
+			t.Fatalf("unexpected model_key: %#v", got)
+		}
+		writeMCPJSON(t, w, map[string]any{
+			"code":    "0",
+			"message": "ok",
+			"log_id":  "log-multimodal2video-vip-1",
+			"data": map[string]any{
+				"submit_id": "submit-multimodal2video-vip-1",
+			},
+		})
+	}))
+	defer server.Close()
+
+	httpCli, err := httpclient.New(server.URL)
+	if err != nil {
+		t.Fatalf("new http client: %v", err)
+	}
+	client := New(httpCli)
+
+	resp, err := client.MultiModal2Video(context.Background(), &Session{
+		Cookie: "sid=test",
+		UserID: "u-1",
+	}, &MultiModal2VideoRequest{
+		ImageResourceIDList: []string{"image-resource-1"},
+		Prompt:              "保持主体不变，做自然镜头运动",
+		ModelVersion:        "seedance2.0_vip",
+	})
+	if err != nil {
+		t.Fatalf("MultiModal2Video failed: %v", err)
+	}
+	if resp.LogID != "log-multimodal2video-vip-1" {
 		t.Fatalf("unexpected log id: %#v", resp.LogID)
 	}
 }

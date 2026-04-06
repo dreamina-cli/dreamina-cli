@@ -2544,7 +2544,7 @@ func TestValidateVideoAudioDurationHonorsModelRange(t *testing.T) {
 		context.Background(),
 		"audio",
 		"/tmp/sample.mp3",
-		"seedance2.0",
+		"seedance2.0_vip",
 		func(ctx context.Context, path string) (float64, error) {
 			return 4.5, nil
 		},

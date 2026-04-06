@@ -95,9 +95,14 @@ dreamina query_result --submit_id "${SUBMIT_ID}" --download_dir ./downloads
 dreamina text2image --prompt "霓虹城市夜景" --ratio 16:9
 dreamina image2image --image ./testdata/smoke/image-1.png --prompt "改成赛博朋克风格"
 dreamina image_upscale --image ./testdata/smoke/image-1.png --resolution_type 4k
-dreamina text2video --prompt "海边延时摄影" --duration 5
-dreamina multimodal2video --image ./testdata/smoke/image-1.png --video ./testdata/smoke/ref5.mp4 --audio ./testdata/smoke/music5.mp3 --prompt "生成统一短片"
+dreamina text2video --prompt "海边延时摄影" --duration 5 --model_version seedance2.0_vip
+dreamina multimodal2video --image ./testdata/smoke/image-1.png --video ./testdata/smoke/ref5.mp4 --audio ./testdata/smoke/music5.mp3 --prompt "生成统一短片" --model_version seedance2.0fast_vip
 ```
+
+说明：
+
+- `text2video`、`image2video`、`frames2video`、`multimodal2video` 的 VIP 模型变体仍然走 `/dreamina/cli/v1/video_generate`
+- 默认模型没有变，仍然是 `seedance2.0fast`
 
 ## 4. Curl 速览
 

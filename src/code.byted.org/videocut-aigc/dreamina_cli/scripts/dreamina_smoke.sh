@@ -21,6 +21,8 @@ RESULTS_MD="${RUN_DIR}/results.md"
 : "${LAST_RESOURCE_ID:=__YOUR_LAST_RESOURCE_ID__}"
 : "${IMAGE_PATH:=}"
 : "${UPSCALE_RESOLUTION:=4k}"
+: "${TEXT2VIDEO_MODEL_VERSION:=seedance2.0fast}"
+: "${MULTIMODAL_MODEL_VERSION:=seedance2.0fast}"
 
 SESSION_JSON_CACHE=""
 
@@ -75,6 +77,8 @@ Environment:
   LAST_RESOURCE_ID optional; defaults to latest cli:image_upscale upload
   IMAGE_PATH   optional; defaults to ./testdata/smoke/image-1.png when present
   UPSCALE_RESOLUTION optional; defaults to 4k
+  TEXT2VIDEO_MODEL_VERSION optional; defaults to seedance2.0fast, can be set to seedance2.0_vip or seedance2.0fast_vip
+  MULTIMODAL_MODEL_VERSION optional; defaults to seedance2.0fast, can be set to seedance2.0_vip or seedance2.0fast_vip
 
 Notes:
   - This script does not automate browser login.
@@ -937,7 +941,7 @@ run_cli_user_credit() {
 run_cli_text2video() {
   local bin
   bin="$(resolve_dreamina_bin)"
-  (cd "${ROOT_DIR}" && "${bin}" text2video --prompt "未来城市清晨航拍" --poll 10)
+  (cd "${ROOT_DIR}" && "${bin}" text2video --prompt "未来城市清晨航拍" --model_version "${TEXT2VIDEO_MODEL_VERSION}" --poll 10)
 }
 
 run_cli_image2image() {
@@ -967,7 +971,7 @@ run_cli_multimodal2video() {
   image_path="$(resolve_image_path)"
   video_path="$(ensure_smoke_video_sample)"
   audio_path="$(ensure_smoke_audio_sample)"
-  (cd "${ROOT_DIR}" && "${bin}" multimodal2video --image "${image_path}" --video "${video_path}" --audio "${audio_path}" --prompt "生成统一短片" --model_version seedance2.0fast --duration 5 --poll 10)
+  (cd "${ROOT_DIR}" && "${bin}" multimodal2video --image "${image_path}" --video "${video_path}" --audio "${audio_path}" --prompt "生成统一短片" --model_version "${MULTIMODAL_MODEL_VERSION}" --duration 5 --poll 10)
 }
 
 run_cli_query_image2image() {
@@ -1122,7 +1126,7 @@ run_curl_text2video() {
       "ratio": "16:9",
       "duration": 5,
       "creation_agent_version": "3.0.0",
-      "model_key": "seedance2.0fast",
+      "model_key": "'"${TEXT2VIDEO_MODEL_VERSION}"'",
       "submit_id": "__AUTO_GENERATED__"
     }'
 }
@@ -1331,7 +1335,7 @@ run_curl_multimodal2video() {
       "prompt": "以图像为主视觉生成统一短片",
       "ratio": "16:9",
       "duration": 5,
-      "model_key": "seedance2.0fast",
+      "model_key": "'"${MULTIMODAL_MODEL_VERSION}"'",
       "image_resource_id_list": ["'"${image_resource_id}"'"],
       "video_resource_id_list": '"$(if [[ -n "${video_resource_id}" ]]; then printf '["%s"]' "${video_resource_id}"; else printf '[]'; fi)"',
       "audio_resource_id_list": '"$(if [[ -n "${audio_resource_id}" ]]; then printf '["%s"]' "${audio_resource_id}"; else printf '[]'; fi)"'

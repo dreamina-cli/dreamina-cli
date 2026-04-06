@@ -2799,7 +2799,7 @@ func supportedDurationRange(modelVersion string) (float64, float64) {
 		return 3, 10
 	case "3.5pro":
 		return 4, 12
-	case "", "seedance2.0", "seedance2.0fast":
+	case "", "seedance2.0", "seedance2.0fast", "seedance2.0vip", "seedance2.0fastvip":
 		return 4, 15
 	default:
 		return 4, 15

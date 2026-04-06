@@ -28,17 +28,21 @@
 
 - 任务类型：`text2video`
 - 主要输入：`prompt`、`duration`、`ratio`、`video_resolution`、`model_version`
+- 视频模型：支持 `seedance2.0`、`seedance2.0fast`、`seedance2.0_vip`、`seedance2.0fast_vip`
+- 说明：默认仍是 `seedance2.0fast`，VIP 变体仍走同一条视频生成端点
 
 ### `image2video`
 
 - 任务类型：`image2video`
 - 主要输入：`image_path`、`prompt`、`duration`、`video_resolution`、`model_version`
 - 特点：只要显式传入高级参数，就会走带配置的提交分支
+- 视频模型：高级配置路径支持 `seedance2.0`、`seedance2.0fast`、`seedance2.0_vip`、`seedance2.0fast_vip`
 
 ### `frames2video`
 
 - 任务类型：`frames2video`
 - 主要输入：`first_path`、`last_path`、`prompt`、`duration`
+- 视频模型：支持 `3.0`、`3.5pro`、`seedance2.0`、`seedance2.0fast`、`seedance2.0_vip`、`seedance2.0fast_vip`
 
 ### `multiframe2video`
 
@@ -56,6 +60,7 @@
 - 任务类型：`multimodal2video`
 - 主要输入：`image_paths`、`video_paths`、`audio_paths`、`prompt`
 - 约束：不能只有音频，至少要有图片或视频输入
+- 视频模型：支持 `seedance2.0`、`seedance2.0fast`、`seedance2.0_vip`、`seedance2.0fast_vip`
 
 ## 共同特征
 

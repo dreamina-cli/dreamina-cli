@@ -157,10 +157,9 @@ Examples:
 Submit a Dreamina text-to-video task. The task is asynchronous, but --poll can wait briefly before falling back to query_result.
 
 Supported combinations:
-- model_version: seedance2.0, seedance2.0fast
+- model_version: seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip
 - ratio: 1:1, 3:4, 16:9, 4:3, 9:16, 21:9
-- seedance2.0 -> video_resolution 720p; duration 4-15s
-- seedance2.0fast -> video_resolution 720p; duration 4-15s
+- seedance2.0 family -> video_resolution 720p; duration 4-15s
 
 Notes:
 - default model_version: seedance2.0fast
@@ -174,7 +173,7 @@ Flags:
       --duration int              video duration in seconds; supported range: 4-15 (default 5)
       --ratio string              supported values: 1:1, 3:4, 16:9, 4:3, 9:16, 21:9
       --video_resolution string   supported values: 720p
-      --model_version string      supported values: seedance2.0, seedance2.0fast; default: seedance2.0fast
+      --model_version string      supported values: seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip; default: seedance2.0fast
       --poll int                  submit then poll query_result for up to N seconds at 1s intervals (0 disables polling)
   -h, --help                      help for text2video
 
@@ -253,7 +252,7 @@ Upload one local image, then submit a Dreamina image-to-video task. For multi-im
 Supported combinations:
 - basic usage: --image + --prompt
 - advanced controls: set any of --duration, --video_resolution, or --model_version
-- advanced model_version values: 3.0, 3.0fast, 3.0pro, 3.0_fast, 3.0_pro, 3.5pro, 3.5_pro, seedance2.0, seedance2.0fast
+- advanced model_version values: 3.0, 3.0fast, 3.0pro, 3.0_fast, 3.0_pro, 3.5pro, 3.5_pro, seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip
 - ratio is inferred from the input image and is not set on this command
 
 Notes:
@@ -265,9 +264,9 @@ Notes:
 Flags:
       --image string              local first-frame image path
       --prompt string             generation prompt
-      --duration int              advanced controls only; supported duration ranges by model: 3.0/3.0fast/3.0pro -> 3-10, 3.5pro -> 4-12, seedance2.0/seedance2.0fast -> 4-15 (default 5)
-      --video_resolution string   advanced controls only; supported values by model: 3.0/3.0fast/3.5pro -> 720p or 1080p, 3.0pro -> 1080p, seedance2.0/seedance2.0fast -> 720p
-      --model_version string      advanced controls only; supported values: 3.0, 3.0fast, 3.0pro, 3.0_fast, 3.0_pro, 3.5pro, 3.5_pro, seedance2.0, seedance2.0fast
+      --duration int              advanced controls only; supported duration ranges by model: 3.0/3.0fast/3.0pro -> 3-10, 3.5pro -> 4-12, seedance2.0 family -> 4-15 (default 5)
+      --video_resolution string   advanced controls only; supported values by model: 3.0/3.0fast/3.5pro -> 720p or 1080p, 3.0pro -> 1080p, seedance2.0 family -> 720p
+      --model_version string      advanced controls only; supported values: 3.0, 3.0fast, 3.0pro, 3.0_fast, 3.0_pro, 3.5pro, 3.5_pro, seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip
       --poll int                  submit then poll query_result for up to N seconds at 1s intervals (0 disables polling)
   -h, --help                      help for image2video
 
@@ -285,11 +284,10 @@ Examples:
 Upload two local images as first and last frames, then submit a Dreamina video generation task. The task is asynchronous, but --poll can wait briefly before falling back to query_result.
 
 Supported combinations:
-- model_version: 3.0, 3.5pro, seedance2.0, seedance2.0fast
+- model_version: 3.0, 3.5pro, seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip
 - 3.0 -> video_resolution 720p or 1080p; duration 3-10s
 - 3.5pro -> video_resolution 720p or 1080p; duration 4-12s
-- seedance2.0 -> video_resolution 720p; duration 4-15s
-- seedance2.0fast -> video_resolution 720p; duration 4-15s
+- seedance2.0 family -> video_resolution 720p; duration 4-15s
 
 Notes:
 - ratio is inferred from the first frame image size
@@ -302,9 +300,9 @@ Flags:
       --first string              local first-frame image path
       --last string               local last-frame image path
       --prompt string             generation prompt
-      --duration int              video duration in seconds; supported ranges: 3.0 -> 3-10, 3.5pro -> 4-12, seedance2.0/seedance2.0fast -> 4-15 (default 5)
-      --video_resolution string   supported values by model: 3.0/3.5pro -> 720p or 1080p; seedance2.0/seedance2.0fast -> 720p
-      --model_version string      supported values: 3.0, 3.5pro, seedance2.0, seedance2.0fast; default: seedance2.0fast
+      --duration int              video duration in seconds; supported ranges: 3.0 -> 3-10, 3.5pro -> 4-12, seedance2.0 family -> 4-15 (default 5)
+      --video_resolution string   supported values by model: 3.0/3.5pro -> 720p or 1080p; seedance2.0 family -> 720p
+      --model_version string      supported values: 3.0, 3.5pro, seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip; default: seedance2.0fast
       --poll int                  submit then poll query_result for up to N seconds at 1s intervals (0 disables polling)
   -h, --help                      help for frames2video
 
@@ -356,13 +354,13 @@ Examples:
 		Raw: `Usage:
   dreamina multimodal2video [flags]
 
-Upload local images, videos, and audio, then submit Dreamina's flagship multimodal video generation mode. This is the strongest video generation mode currently exposed in the CLI, supports all-around references, and supports the Seedance 2.0 family (flag values: seedance2.0, seedance2.0fast). The task is asynchronous, but --poll can wait briefly before falling back to query_result.
+Upload local images, videos, and audio, then submit Dreamina's flagship multimodal video generation mode. This is the strongest video generation mode currently exposed in the CLI, supports all-around references, and supports the Seedance 2.0 family (flag values: seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip). The task is asynchronous, but --poll can wait briefly before falling back to query_result.
 
 Supported combinations:
 - inputs: any mix of --image, --video, --audio
 - at least one --image or --video is required
 - audio inputs must be 2-15 seconds
-- model_version: seedance2.0, seedance2.0fast
+- model_version: seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip
 - ratio: 1:1, 3:4, 16:9, 4:3, 9:16, 21:9
 - video_resolution: 720p
 - duration: 4-15s
@@ -381,7 +379,7 @@ Flags:
       --duration int              video duration in seconds; supported range: 4-15 (default 5)
       --ratio string              supported values: 1:1, 3:4, 16:9, 4:3, 9:16, 21:9
       --video_resolution string   supported values: 720p
-      --model_version string      supported values: seedance2.0, seedance2.0fast
+      --model_version string      supported values: seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip
       --poll int                  submit then poll query_result for up to N seconds at 1s intervals (0 disables polling)
   -h, --help                      help for multimodal2video
 
