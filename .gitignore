@@ -1,0 +1,14 @@
+.DS_Store
+.cache/
+compile_path/
+pkg/
+
+**/dist/
+**/bin/
+**/logs/
+**/tmp_smoke_downloads/
+**/tmp_smoke_media/
+
+*.log
+*.out
+*.test

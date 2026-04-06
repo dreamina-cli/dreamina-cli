@@ -1,0 +1,17 @@
+# Dreamina CLI 旧新二进制 query_result 对齐样本
+# 支持空行和 # 注释
+
+# image2image：历史上出现过 p11 / p26 签名 URL 波动
+b8cd2dbbcd84b21f
+d87c6e79531707c3
+
+# text2image：已观察到整条 URL 完全一致
+d5277a1572626153
+
+# image_upscale：旧程序应保持 querying 视图
+cef8fd5aa61dc3c3
+1ad40c2de34abae1
+61453f696344136b
+
+# image2video：下载文件名与视频签名 URL 回放样本
+dbe58e178e4a4432
