@@ -3,6 +3,8 @@ package gen
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -303,6 +305,43 @@ func TestContextWithSessionNormalizesScientificNotationUserID(t *testing.T) {
 	}
 	if session.UserID != "4091737426886912" {
 		t.Fatalf("unexpected normalized session user id: %#v", session.UserID)
+	}
+}
+
+func TestContextWithSessionPrefersExplicitCookiePayloadOverCookieFile(t *testing.T) {
+	t.Helper()
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".dreamina_cli"), 0o755); err != nil {
+		t.Fatalf("mkdir cookie dir: %v", err)
+	}
+	body := []byte("{\n  \"cookie\": \"sid=file-cookie\"\n}\n")
+	if err := os.WriteFile(filepath.Join(home, ".dreamina_cli", "cookie.json"), body, 0o600); err != nil {
+		t.Fatalf("write cookie file: %v", err)
+	}
+
+	ctx := ContextWithSession(context.Background(), map[string]any{
+		"cookie": "sid=payload-cookie",
+		"headers": map[string]any{
+			"User-Agent": "ua-payload",
+			"X-Test":     "payload",
+		},
+		"uid": "user-payload-1",
+	})
+
+	session := sessionFromContext(ctx)
+	if session == nil {
+		t.Fatalf("expected session")
+	}
+	if session.Cookie != "sid=payload-cookie" {
+		t.Fatalf("unexpected session cookie: %#v", session)
+	}
+	if session.Headers["User-Agent"] != "ua-payload" || session.Headers["X-Test"] != "payload" {
+		t.Fatalf("unexpected session headers: %#v", session.Headers)
+	}
+	if session.UserID != "user-payload-1" {
+		t.Fatalf("unexpected session user id: %#v", session.UserID)
 	}
 }
 

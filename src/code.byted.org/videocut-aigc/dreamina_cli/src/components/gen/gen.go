@@ -688,28 +688,41 @@ func sessionFromContext(ctx context.Context) *mcpclient.Session {
 
 func buildClientSession(payload any) *mcpclient.Session {
 	root, ok := payload.(map[string]any)
-	if !ok {
-		return nil
-	}
 	session := &mcpclient.Session{
 		Headers: map[string]string{},
 	}
-	if cookie := anyString(root["cookie"]); cookie != "" {
-		session.Cookie = cookie
-	}
-	if rawHeaders, ok := root["headers"].(map[string]any); ok {
-		for key, value := range rawHeaders {
-			key = strings.TrimSpace(key)
-			text := strings.TrimSpace(fmt.Sprint(value))
-			if key != "" && text != "" && text != "<nil>" {
-				session.Headers[key] = text
+	if ok {
+		if cookie := anyString(root["cookie"]); cookie != "" {
+			session.Cookie = cookie
+		}
+		if rawHeaders, ok := root["headers"].(map[string]any); ok {
+			for key, value := range rawHeaders {
+				key = strings.TrimSpace(key)
+				text := strings.TrimSpace(fmt.Sprint(value))
+				if key != "" && text != "" && text != "<nil>" {
+					session.Headers[key] = text
+				}
 			}
 		}
+		// gen/mcp client ultimately only recognizes Session.UserID.
+		// Here we unify the common user_id/uid/UserID/UID in the login payload to avoid the same session from losing user information again in the query chain.
+		if userID := recursiveSessionString(root, "user_id", "uid", "userId", "UserId", "UserID", "UID"); userID != "" {
+			session.UserID = normalizeSessionIDString(userID)
+		}
+		if session.Cookie != "" {
+			return session
+		}
 	}
-	// gen/mcp 客户端最终只认 Session.UserID。
-	// 这里把登录 payload 里常见的 user_id/uid/UserID/UID 一次性统一，避免同一份会话在 query 链路里再次丢用户信息。
-	if userID := recursiveSessionString(root, "user_id", "uid", "userId", "UserId", "UserID", "UID"); userID != "" {
-		session.UserID = normalizeSessionIDString(userID)
+
+	// If the caller did not pass an explicit cookie payload, fall back to cookie.json.
+	if fileSession := mcpclient.BuildMCPSessionFromCookieFile(); fileSession != nil && fileSession.Cookie != "" {
+		if session.UserID != "" {
+			fileSession.UserID = session.UserID
+		}
+		return fileSession
+	}
+	if !ok {
+		return nil
 	}
 	return session
 }
