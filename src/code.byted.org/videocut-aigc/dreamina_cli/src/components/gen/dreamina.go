@@ -1268,8 +1268,8 @@ func updateRecoveredQueryResultJSON(resultJSON string, taskValue *task.AIGCTask,
 			delete(data, "history_id")
 		}
 		data["query"] = map[string]any{
-			"queue_status":    queueStatus,
-			"progress":        progress,
+			"queue_status": queueStatus,
+			"progress":     progress,
 		}
 		if persistQueryTimestamp {
 			data["query"].(map[string]any)["last_queried_at"] = queriedAt
@@ -2086,7 +2086,8 @@ func historyQueryMetadata(resp *mcpclient.GetHistoryByIdsResponse) map[string]an
 	code := strings.TrimSpace(resp.Code)
 	message := strings.TrimSpace(resp.Message)
 	logID := strings.TrimSpace(resp.LogID)
-	if code == "" && message == "" && logID == "" {
+	bodyPreview := strings.TrimSpace(resp.BodyPreview)
+	if code == "" && message == "" && logID == "" && bodyPreview == "" {
 		return nil
 	}
 	meta := map[string]any{}
@@ -2098,6 +2099,9 @@ func historyQueryMetadata(resp *mcpclient.GetHistoryByIdsResponse) map[string]an
 	}
 	if logID != "" {
 		meta["log_id"] = logID
+	}
+	if bodyPreview != "" {
+		meta["body_preview"] = bodyPreview
 	}
 	// code=0 说明查询正常返回。即便是成功空结果，也需要至少保留 code=0 供状态机识别“查询成功但未命中”，
 	// 但没必要把默认 ok 文案和空 log_id 一起写回 queue_info/query 里制造额外噪音。

@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,6 +26,40 @@ const (
 	mcpAppIDHeader = "513695"
 	mcpPFHeader    = "7"
 )
+
+// getCookieFromCookieFile  reads cookie from cookie.json file
+func getCookieFromCookieFile() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	cookieFilePath := filepath.Join(homeDir, ".dreamina_cli", "cookie.json")
+	cookieData, err := os.ReadFile(cookieFilePath)
+	if err != nil {
+		return ""
+	}
+	var cookieStruct struct {
+		Cookie string `json:"cookie"`
+	}
+	if err := json.Unmarshal(cookieData, &cookieStruct); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(cookieStruct.Cookie)
+}
+
+// BuildMCPSessionFromCookieFile creates an MCP Session using cookie.json file
+func BuildMCPSessionFromCookieFile() *Session {
+	session := &Session{
+		Headers: map[string]string{},
+	}
+
+	// Read cookie from cookie.json file
+	if cookie := getCookieFromCookieFile(); cookie != "" {
+		session.Cookie = cookie
+	}
+
+	return session
+}
 
 type Session struct {
 	Cookie  string            `json:"cookie,omitempty"`
@@ -126,10 +162,11 @@ type GetHistoryByIdsRequest struct {
 }
 
 type GetHistoryByIdsResponse struct {
-	Code    string                  `json:"code,omitempty"`
-	Message string                  `json:"message,omitempty"`
-	LogID   string                  `json:"log_id,omitempty"`
-	Items   map[string]*HistoryItem `json:"items,omitempty"`
+	Code        string                  `json:"code,omitempty"`
+	Message     string                  `json:"message,omitempty"`
+	LogID       string                  `json:"log_id,omitempty"`
+	BodyPreview string                  `json:"body_preview,omitempty"`
+	Items       map[string]*HistoryItem `json:"items,omitempty"`
 }
 
 // New 创建 Dreamina MCP 客户端；如果没有注入 HTTP 客户端，就使用默认实现。
@@ -1035,13 +1072,14 @@ func buildHistoryTransportResponse(resp *httpclient.Response, body []byte, encod
 	code := "response_decode_error"
 	message := "unexpected non-json response"
 	logID := buildMCPLogID("history-transport")
+	bodyPreview := nonJSONBodyPreview(body)
 
 	if statusCode >= 400 {
 		code = strconv.Itoa(statusCode)
 		message = "backend request failed"
 	}
-	if preview := nonJSONBodyPreview(body); preview != "" {
-		message = preview
+	if bodyPreview != "" {
+		message = bodyPreview
 	}
 	if readErr != nil {
 		code = "response_read_error"
@@ -1054,10 +1092,11 @@ func buildHistoryTransportResponse(resp *httpclient.Response, body []byte, encod
 		message = "empty response body"
 	}
 	return &GetHistoryByIdsResponse{
-		Code:    code,
-		Message: message,
-		LogID:   logID,
-		Items:   map[string]*HistoryItem{},
+		Code:        code,
+		Message:     message,
+		LogID:       logID,
+		BodyPreview: bodyPreview,
+		Items:       map[string]*HistoryItem{},
 	}
 }
 

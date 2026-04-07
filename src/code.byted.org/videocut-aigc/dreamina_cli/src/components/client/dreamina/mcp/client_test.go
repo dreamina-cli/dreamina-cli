@@ -2459,6 +2459,9 @@ func TestGetHistoryByIdsReturnsDecodeFailureWithoutFallback(t *testing.T) {
 	if resp.Message != "not-json" {
 		t.Fatalf("unexpected response message: %#v", resp.Message)
 	}
+	if resp.BodyPreview != "not-json" {
+		t.Fatalf("unexpected response body preview: %#v", resp.BodyPreview)
+	}
 	if len(resp.Items) != 0 {
 		t.Fatalf("expected no synthetic fallback items, got %#v", resp.Items)
 	}

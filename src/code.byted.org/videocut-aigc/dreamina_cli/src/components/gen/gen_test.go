@@ -1512,6 +1512,20 @@ func TestHistoryQueryMetadataKeepsSuccessSentinelWithoutNoise(t *testing.T) {
 	}
 }
 
+func TestHistoryQueryMetadataIncludesBodyPreviewForDecodeErrors(t *testing.T) {
+	t.Helper()
+
+	got := historyQueryMetadata(&mcpclient.GetHistoryByIdsResponse{
+		Code:        "response_decode_error",
+		Message:     "unexpected non-json response",
+		LogID:       "history-transport-1",
+		BodyPreview: "<html>blocked</html>",
+	})
+	if got["body_preview"] != "<html>blocked</html>" {
+		t.Fatalf("unexpected history query metadata: %#v", got)
+	}
+}
+
 func TestDeriveRecoveredQueryStateKeepsMinimalSubmittedFallbackWhenHistoryQueryFailed(t *testing.T) {
 	t.Helper()
 
