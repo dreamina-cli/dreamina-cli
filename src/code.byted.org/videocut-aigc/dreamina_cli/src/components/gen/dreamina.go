@@ -1421,7 +1421,7 @@ func preferredImageItemsFromHistory(historyItem map[string]any) []map[string]any
 	sort.SliceStable(sorted, func(i, j int) bool {
 		return historyImageCandidateScore(sorted[i]) > historyImageCandidateScore(sorted[j])
 	})
-	return sorted
+	return dedupeHistoryImageCandidates(sorted)
 }
 
 func mediaItemsFromImageOrigins(historyItem map[string]any) []map[string]any {
@@ -1641,6 +1641,9 @@ func buildRecoveredImageView(item map[string]any, url string) map[string]any {
 		"image_url": url,
 		"type":      "image",
 	}
+	if imageURI := firstCleanRecoveredValue(item, "image_uri", "imageUri", "ImageUri", "ImageURI", "uri", "Uri", "URI"); imageURI != "" {
+		view["image_uri"] = imageURI
+	}
 	if width := anyInt(item["width"]); width > 0 {
 		view["width"] = width
 	}
@@ -1818,6 +1821,72 @@ func historyImageCandidateScore(item map[string]any) int {
 	return score
 }
 
+func dedupeHistoryImageCandidates(items []map[string]any) []map[string]any {
+	if len(items) <= 1 {
+		return items
+	}
+	out := make([]map[string]any, 0, len(items))
+	seen := map[string]struct{}{}
+	for _, item := range items {
+		key := historyImageIdentityKey(item)
+		if key != "" {
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+func historyImageIdentityKey(item map[string]any) string {
+	for _, key := range []string{
+		"image_uri", "imageUri", "ImageUri", "ImageURI",
+		"uri", "Uri", "URI",
+		"cover_uri", "coverUri", "CoverUri", "CoverURI",
+	} {
+		if value := cleanRecoveredString(item[key]); value != "" {
+			return "uri:" + strings.ToLower(value)
+		}
+	}
+	urlText := strings.TrimSpace(anyString(firstNonEmptyHistoryMediaValue(item, "image", "image_url", "url")))
+	if urlText == "" {
+		return ""
+	}
+	if normalized := normalizeHistoryImageURLKey(urlText); normalized != "" {
+		return "url:" + normalized
+	}
+	return "url:" + strings.ToLower(urlText)
+}
+
+func normalizeHistoryImageURLKey(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		raw = strings.ToLower(raw)
+		if idx := strings.Index(raw, "?"); idx >= 0 {
+			raw = raw[:idx]
+		}
+		if idx := strings.Index(raw, "~tplv"); idx >= 0 {
+			raw = raw[:idx]
+		}
+		return strings.TrimRight(raw, "/")
+	}
+	path := strings.ToLower(strings.TrimSpace(parsed.Path))
+	if idx := strings.Index(path, "~tplv"); idx >= 0 {
+		path = path[:idx]
+	}
+	path = strings.TrimRight(path, "/")
+	if path != "" {
+		return path
+	}
+	return strings.ToLower(strings.TrimRight(raw, "/"))
+}
+
 func mergeRecoveredHistoryQueueInfo(queueInfo map[string]any, historyItem map[string]any) {
 	if len(queueInfo) == 0 || len(historyItem) == 0 {
 		return
@@ -1881,6 +1950,9 @@ func mediaItemsFromHistory(historyItem map[string]any, listKey string, urlKey st
 		}
 		if mediaType == "image" {
 			view["image_url"] = url
+			if imageURI := firstCleanRecoveredValue(item, "image_uri", "imageUri", "ImageUri", "ImageURI", "uri", "Uri", "URI"); imageURI != "" {
+				view["image_uri"] = imageURI
+			}
 			if width := anyInt(item["width"]); width > 0 {
 				view["width"] = width
 			}

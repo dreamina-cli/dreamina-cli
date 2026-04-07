@@ -844,6 +844,63 @@ func TestUpdateRecoveredQueryResultJSONPrefersFinalGeneratedImageOverReferenceIm
 	}
 }
 
+func TestUpdateRecoveredQueryResultJSONDedupesSameHistoryImageAcrossSources(t *testing.T) {
+	t.Helper()
+
+	taskValue := &task.AIGCTask{
+		SubmitID:    "submit-image-dedupe-1",
+		GenTaskType: "text2image",
+		GenStatus:   "querying",
+		ResultJSON:  `{"images":[],"videos":[],"queue_info":{"queue_status":"submitted"}}`,
+	}
+
+	updated := updateRecoveredQueryResultJSON(taskValue.ResultJSON, taskValue, "hist-image-dedupe-1", "success", 100, 3, map[string]any{
+		"queue_status": "success",
+		"image": map[string]any{
+			"large_images": []any{
+				map[string]any{
+					"image_uri": "tos-cn-i/example-same-image",
+					"image_url": "https://example.com/tos-cn-i/example-same-image~tplv-aigc_resize:0:0.png?format=.png",
+					"width":     2048,
+					"height":    2048,
+					"format":    "png",
+				},
+			},
+		},
+		"item_list": []any{
+			map[string]any{
+				"image": map[string]any{
+					"large_images": []any{
+						map[string]any{
+							"image_uri": "tos-cn-i/example-same-image",
+							"image_url": "https://example.com/tos-cn-i/example-same-image~tplv-aigc_resize:0:0.png?format=.png&dup=1",
+							"width":     2048,
+							"height":    2048,
+							"format":    "png",
+						},
+					},
+				},
+			},
+		},
+	}, nil)
+
+	root := parseRecoveredResultRoot(updated)
+	imageItems, ok := root["images"].([]any)
+	if !ok || len(imageItems) != 1 {
+		t.Fatalf("expected exactly one deduped image, got %#v", root["images"])
+	}
+	image, ok := imageItems[0].(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected merged image item: %#v", imageItems[0])
+	}
+	if anyString(image["image_uri"]) != "tos-cn-i/example-same-image" {
+		t.Fatalf("expected deduped image uri to be preserved, got %#v", image)
+	}
+	if anyString(image["image_url"]) == "" {
+		t.Fatalf("expected deduped image url to be preserved, got %#v", image)
+	}
+}
+
 func TestUpdateRecoveredQueryResultJSONPrefersTranscodedOriginVideoURL(t *testing.T) {
 	t.Helper()
 
