@@ -2026,8 +2026,16 @@ func sanitizeRecoveredMedia(root map[string]any) {
 		switch list := root[key].(type) {
 		case []map[string]any:
 			filtered := make([]map[string]any, 0, len(list))
+			seen := map[string]struct{}{}
 			for _, item := range list {
 				if isUsableMediaURL(anyString(item["url"])) {
+					identity := recoveredMediaIdentityKey(item, strings.TrimSuffix(key, "s"))
+					if identity != "" {
+						if _, exists := seen[identity]; exists {
+							continue
+						}
+						seen[identity] = struct{}{}
+					}
 					filtered = append(filtered, item)
 				}
 			}
@@ -2038,10 +2046,18 @@ func sanitizeRecoveredMedia(root map[string]any) {
 			root[key] = filtered
 		case []any:
 			filtered := make([]map[string]any, 0, len(list))
+			seen := map[string]struct{}{}
 			for _, raw := range list {
 				item, ok := raw.(map[string]any)
 				if !ok || !isUsableMediaURL(anyString(item["url"])) {
 					continue
+				}
+				identity := recoveredMediaIdentityKey(item, strings.TrimSuffix(key, "s"))
+				if identity != "" {
+					if _, exists := seen[identity]; exists {
+						continue
+					}
+					seen[identity] = struct{}{}
 				}
 				filtered = append(filtered, item)
 			}
@@ -2051,6 +2067,21 @@ func sanitizeRecoveredMedia(root map[string]any) {
 			}
 			root[key] = filtered
 		}
+	}
+}
+
+func recoveredMediaIdentityKey(item map[string]any, mediaType string) string {
+	switch strings.TrimSpace(mediaType) {
+	case "image":
+		return historyImageIdentityKey(item)
+	case "video":
+		urlText := strings.TrimSpace(anyString(firstNonEmptyHistoryMediaValue(item, "video", "video_url", "url")))
+		if urlText == "" {
+			return ""
+		}
+		return "url:" + strings.ToLower(urlText)
+	default:
+		return ""
 	}
 }
 

@@ -901,6 +901,42 @@ func TestUpdateRecoveredQueryResultJSONDedupesSameHistoryImageAcrossSources(t *t
 	}
 }
 
+func TestUpdateRecoveredQueryResultJSONDedupesExistingDuplicateImagesAfterRecovery(t *testing.T) {
+	t.Helper()
+
+	taskValue := &task.AIGCTask{
+		SubmitID:    "submit-image-dedupe-existing-1",
+		GenTaskType: "text2image",
+		GenStatus:   "querying",
+		ResultJSON: `{
+			"images": [
+				{"image_url":"https://example.com/final.png","url":"https://example.com/final.png","width":2048,"height":2048},
+				{"image_url":"https://example.com/final.png","url":"https://example.com/final.png","width":2048,"height":2048}
+			],
+			"videos": [],
+			"queue_info": {"queue_status":"submitted"}
+		}`,
+	}
+
+	updated := updateRecoveredQueryResultJSON(taskValue.ResultJSON, taskValue, "hist-image-dedupe-existing-1", "success", 100, 5, map[string]any{
+		"queue_status": "success",
+		"images": []any{
+			map[string]any{
+				"image_url": "https://example.com/final.png",
+				"url":       "https://example.com/final.png",
+				"width":     2048,
+				"height":    2048,
+			},
+		},
+	}, nil)
+
+	root := parseRecoveredResultRoot(updated)
+	imageItems, ok := root["images"].([]any)
+	if !ok || len(imageItems) != 1 {
+		t.Fatalf("expected duplicate existing images to be collapsed, got %#v", root["images"])
+	}
+}
+
 func TestUpdateRecoveredQueryResultJSONPrefersTranscodedOriginVideoURL(t *testing.T) {
 	t.Helper()
 
