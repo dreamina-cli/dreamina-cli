@@ -1841,6 +1841,13 @@ func dedupeHistoryImageCandidates(items []map[string]any) []map[string]any {
 }
 
 func historyImageIdentityKey(item map[string]any) string {
+	urlText := strings.TrimSpace(anyString(firstNonEmptyHistoryMediaValue(item, "image", "image_url", "url")))
+	if urlText != "" {
+		if normalized := normalizeHistoryImageURLKey(urlText); normalized != "" {
+			return "url:" + normalized
+		}
+		return "url:" + strings.ToLower(urlText)
+	}
 	for _, key := range []string{
 		"image_uri", "imageUri", "ImageUri", "ImageURI",
 		"uri", "Uri", "URI",
@@ -1850,14 +1857,7 @@ func historyImageIdentityKey(item map[string]any) string {
 			return "uri:" + strings.ToLower(value)
 		}
 	}
-	urlText := strings.TrimSpace(anyString(firstNonEmptyHistoryMediaValue(item, "image", "image_url", "url")))
-	if urlText == "" {
-		return ""
-	}
-	if normalized := normalizeHistoryImageURLKey(urlText); normalized != "" {
-		return "url:" + normalized
-	}
-	return "url:" + strings.ToLower(urlText)
+	return ""
 }
 
 func normalizeHistoryImageURLKey(raw string) string {

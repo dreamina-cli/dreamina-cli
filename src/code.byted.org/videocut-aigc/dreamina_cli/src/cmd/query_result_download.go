@@ -303,7 +303,7 @@ func mediaItemsForOutput(v any) []map[string]any {
 			}
 			out = append(out, cloned)
 		}
-		return out
+		return dedupeMediaItems(out, inferMediaListKeyFromItems(out))
 	case []any:
 		out := make([]map[string]any, 0, len(items))
 		for _, item := range items {
@@ -313,6 +313,14 @@ func mediaItemsForOutput(v any) []map[string]any {
 					cloned[key] = value
 				}
 				out = append(out, cloned)
+				continue
+			}
+			if text, ok := item.(string); ok {
+				text = strings.TrimSpace(text)
+				if text == "" {
+					continue
+				}
+				out = append(out, map[string]any{"url": text})
 				continue
 			}
 			body, err := json.Marshal(item)
@@ -325,10 +333,38 @@ func mediaItemsForOutput(v any) []map[string]any {
 			}
 			out = append(out, decoded)
 		}
-		return out
+		return dedupeMediaItems(out, inferMediaListKeyFromItems(out))
+	case []string:
+		out := make([]map[string]any, 0, len(items))
+		for _, item := range items {
+			item = strings.TrimSpace(item)
+			if item == "" {
+				continue
+			}
+			out = append(out, map[string]any{"url": item})
+		}
+		return dedupeMediaItems(out, inferMediaListKeyFromItems(out))
 	default:
 		return []map[string]any{}
 	}
+}
+
+func inferMediaListKeyFromItems(items []map[string]any) string {
+	for _, item := range items {
+		if firstNonEmptyViewString(item["image_url"]) != "" {
+			return "images"
+		}
+		if firstNonEmptyViewString(item["video_url"]) != "" {
+			return "videos"
+		}
+		switch strings.TrimSpace(strings.ToLower(firstNonEmptyViewString(item["type"]))) {
+		case "image":
+			return "images"
+		case "video":
+			return "videos"
+		}
+	}
+	return "images"
 }
 
 func downloadedMediaPaths(downloaded any, key string) []string {
@@ -852,7 +888,7 @@ func extractMediaList(root map[string]any, key string) []map[string]any {
 				}
 			}
 		}
-		return out
+		return dedupeMediaItems(out, key)
 	case []map[string]any:
 		out := make([]map[string]any, 0, len(list))
 		for _, item := range list {
@@ -860,7 +896,7 @@ func extractMediaList(root map[string]any, key string) []map[string]any {
 				out = append(out, item)
 			}
 		}
-		return out
+		return dedupeMediaItems(out, key)
 	case []string:
 		out := make([]map[string]any, 0, len(list))
 		for _, item := range list {
@@ -868,9 +904,89 @@ func extractMediaList(root map[string]any, key string) []map[string]any {
 				out = append(out, map[string]any{"url": item, "type": strings.TrimSuffix(key, "s")})
 			}
 		}
-		return out
+		return dedupeMediaItems(out, key)
 	}
 	return []map[string]any{}
+}
+
+func dedupeMediaItems(items []map[string]any, key string) []map[string]any {
+	if len(items) <= 1 {
+		return items
+	}
+	out := make([]map[string]any, 0, len(items))
+	seen := map[string]struct{}{}
+	for _, item := range items {
+		identity := mediaItemIdentityKey(item, strings.TrimSuffix(key, "s"))
+		if identity != "" {
+			if _, exists := seen[identity]; exists {
+				continue
+			}
+			seen[identity] = struct{}{}
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+func mediaItemIdentityKey(item map[string]any, mediaType string) string {
+	switch strings.TrimSpace(mediaType) {
+	case "image":
+		urlText := firstMediaItemURL(item, "image")
+		if urlText != "" {
+			return "url:" + normalizeMediaURLIdentity(urlText)
+		}
+		for _, key := range []string{"image_uri", "imageUri", "ImageUri", "ImageURI", "uri", "Uri", "URI"} {
+			if value := cleanViewString(item[key]); value != "" {
+				return "uri:" + strings.ToLower(value)
+			}
+		}
+		return ""
+	case "video":
+		urlText := firstMediaItemURL(item, "video")
+		if urlText == "" {
+			return ""
+		}
+		return "url:" + normalizeMediaURLIdentity(urlText)
+	default:
+		return ""
+	}
+}
+
+func firstMediaItemURL(item map[string]any, mediaType string) string {
+	if mediaType == "image" {
+		return firstNonEmptyViewString(item["image_url"], item["url"])
+	}
+	if mediaType == "video" {
+		return firstNonEmptyViewString(item["video_url"], item["url"])
+	}
+	return firstNonEmptyViewString(item["url"])
+}
+
+func normalizeMediaURLIdentity(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		text := strings.ToLower(raw)
+		if idx := strings.Index(text, "?"); idx >= 0 {
+			text = text[:idx]
+		}
+		if idx := strings.Index(text, "~tplv"); idx >= 0 {
+			text = text[:idx]
+		}
+		return strings.TrimRight(text, "/")
+	}
+	path := strings.ToLower(strings.TrimSpace(parsed.Path))
+	if idx := strings.Index(path, "~tplv"); idx >= 0 {
+		path = path[:idx]
+	}
+	path = strings.TrimRight(path, "/")
+	if path != "" {
+		return path
+	}
+	return strings.ToLower(strings.TrimRight(raw, "/"))
 }
 
 // copyLocalFile 把本地文件原样复制到目标路径，供 file:// 和绝对路径下载场景复用。

@@ -43,6 +43,43 @@ func TestParseRemoteQueryResultNormalizesMediaPayload(t *testing.T) {
 	}
 }
 
+func TestParseRemoteQueryResultDeduplicatesDuplicateImages(t *testing.T) {
+	t.Helper()
+
+	raw := `{
+		"images": [
+			{
+				"image_uri": "tos-cn-i/example-1",
+				"image_url": "https://example.com/tos-cn-i/example-1~tplv-aigc_resize:0:0.png?format=.png",
+				"url": "https://example.com/tos-cn-i/example-1~tplv-aigc_resize:0:0.png?format=.png",
+				"width": 2048,
+				"height": 2048
+			},
+			{
+				"image_url": "https://example.com/tos-cn-i/example-1~tplv-aigc_resize:0:0.png?format=.png",
+				"url": "https://example.com/tos-cn-i/example-1~tplv-aigc_resize:0:0.png?format=.png",
+				"width": 2048,
+				"height": 2048
+			}
+		],
+		"videos": []
+	}`
+
+	got, err := parseRemoteQueryResult(raw)
+	if err != nil {
+		t.Fatalf("parseRemoteQueryResult failed: %v", err)
+	}
+
+	media, ok := got.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected result type: %T", got)
+	}
+	images, ok := media["images"].([]map[string]any)
+	if !ok || len(images) != 1 {
+		t.Fatalf("expected duplicate images to be collapsed, got %#v", media["images"])
+	}
+}
+
 func TestDownloadQueryResultMediaWritesExpectedPaths(t *testing.T) {
 	t.Helper()
 
@@ -106,6 +143,43 @@ func TestDownloadQueryResultMediaWritesExpectedPaths(t *testing.T) {
 	}
 	if string(videoBody) != "video-bytes" {
 		t.Fatalf("unexpected video content: %q", string(videoBody))
+	}
+}
+
+func TestDownloadQueryResultMediaDeduplicatesDuplicateImages(t *testing.T) {
+	t.Helper()
+
+	srcDir := t.TempDir()
+	imageSrc := filepath.Join(srcDir, "source-image.png")
+	if err := os.WriteFile(imageSrc, []byte("image-bytes"), 0o644); err != nil {
+		t.Fatalf("write source image: %v", err)
+	}
+
+	downloadDir := t.TempDir()
+	got, err := downloadQueryResultMedia(&task.AIGCTask{
+		SubmitID: "submit-dedupe-1",
+	}, map[string]any{
+		"images": []any{
+			map[string]any{"image_uri": "tos-cn-i/example-1", "url": "file://" + imageSrc},
+			map[string]any{"url": "file://" + imageSrc},
+		},
+		"videos": []any{},
+	}, downloadDir)
+	if err != nil {
+		t.Fatalf("downloadQueryResultMedia failed: %v", err)
+	}
+
+	body, err := json.Marshal(got)
+	if err != nil {
+		t.Fatalf("marshal downloaded payload: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("unmarshal downloaded payload: %v", err)
+	}
+	imageItems, ok := payload["images"].([]any)
+	if !ok || len(imageItems) != 1 {
+		t.Fatalf("expected duplicate image downloads to be collapsed, got %#v", payload["images"])
 	}
 }
 
@@ -233,6 +307,46 @@ func TestBuildQueryResultOutputPreservesDownloadedImageFieldOrder(t *testing.T) 
 	}
 	if !strings.Contains(string(body), `"images":[{"path":"/tmp/out/image-1.png","width":100,"height":200}]`) {
 		t.Fatalf("unexpected downloaded image field order: %s", string(body))
+	}
+}
+
+func TestBuildQueryResultOutputDeduplicatesStoredDuplicateImagesWhenDownloaded(t *testing.T) {
+	t.Helper()
+
+	got := buildQueryResultOutput(
+		&task.AIGCTask{
+			SubmitID:  "submit-1",
+			GenStatus: "success",
+			ResultJSON: `{
+				"images": [
+					{"image_uri":"tos-cn-i/example-1","image_url":"https://example.com/final.png","width": 100, "height": 200},
+					{"image_url":"https://example.com/final.png","width": 100, "height": 200}
+				],
+				"videos": []
+			}`,
+		},
+		map[string]any{"images": []any{map[string]any{"url": "https://example.com/final.png"}}, "videos": []any{}},
+		map[string]any{"images": []map[string]any{{"path": "/tmp/out/image-1.png"}}},
+		"/tmp/out",
+	)
+
+	root, ok := got.(map[string]any)
+	if !ok {
+		body, err := json.Marshal(got)
+		if err != nil {
+			t.Fatalf("marshal query_result output: %v", err)
+		}
+		if err := json.Unmarshal(body, &root); err != nil {
+			t.Fatalf("unmarshal query_result output: %v", err)
+		}
+	}
+	resultJSON, ok := root["result_json"].(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected result_json payload: %#v", root["result_json"])
+	}
+	images, ok := resultJSON["images"].([]any)
+	if !ok || len(images) != 1 {
+		t.Fatalf("expected duplicate stored images to be collapsed, got %#v", resultJSON["images"])
 	}
 }
 

@@ -305,34 +305,12 @@ func outputMediaList(root map[string]any, key string) []any {
 	if !ok {
 		return []any{}
 	}
-	switch list := raw.(type) {
-	case []map[string]any:
-		out := make([]any, 0, len(list))
-		for _, item := range list {
-			out = append(out, cloneOutputMediaItem(item, key))
-		}
-		return out
-	case []any:
-		out := make([]any, 0, len(list))
-		for _, item := range list {
-			switch value := item.(type) {
-			case map[string]any:
-				out = append(out, cloneOutputMediaItem(value, key))
-			case string:
-				value = strings.TrimSpace(value)
-				if value == "" {
-					continue
-				}
-				if key == "images" {
-					out = append(out, queryResultImageOutput{ImageURL: value})
-				} else {
-					out = append(out, queryResultVideoOutput{VideoURL: value})
-				}
-			}
-		}
-		return out
+	items := mediaItemsForOutput(raw)
+	out := make([]any, 0, len(items))
+	for _, item := range items {
+		out = append(out, cloneOutputMediaItem(item, key))
 	}
-	return []any{}
+	return out
 }
 
 // cloneOutputMediaItem 把媒体项规范成稳定字段顺序的展示结构。
