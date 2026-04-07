@@ -2467,6 +2467,37 @@ func TestGetHistoryByIdsReturnsDecodeFailureWithoutFallback(t *testing.T) {
 	}
 }
 
+func TestGetHistoryByIdsKeepsFullBodyPreviewForNonJSONResponse(t *testing.T) {
+	t.Helper()
+
+	longBody := strings.Repeat("x", 300)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(longBody))
+	}))
+	defer server.Close()
+
+	httpCli, err := httpclient.New(server.URL)
+	if err != nil {
+		t.Fatalf("new http client: %v", err)
+	}
+	client := New(httpCli)
+
+	resp, err := client.GetHistoryByIds(context.Background(), &Session{Cookie: "sid=test"}, &GetHistoryByIdsRequest{
+		HistoryIDs: []string{"hist-1"},
+	})
+	if err != nil {
+		t.Fatalf("GetHistoryByIds failed: %v", err)
+	}
+	if resp.BodyPreview != longBody {
+		t.Fatalf("unexpected response body preview length=%d", len(resp.BodyPreview))
+	}
+	wantMessage := longBody[:240] + "..."
+	if resp.Message != wantMessage {
+		t.Fatalf("unexpected response message: %#v", resp.Message)
+	}
+}
+
 func TestFormatHistoryQueueStatusMatchesOriginalLabels(t *testing.T) {
 	t.Helper()
 

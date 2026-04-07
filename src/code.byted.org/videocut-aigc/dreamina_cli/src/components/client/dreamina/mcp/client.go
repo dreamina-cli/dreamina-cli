@@ -1073,13 +1073,14 @@ func buildHistoryTransportResponse(resp *httpclient.Response, body []byte, encod
 	message := "unexpected non-json response"
 	logID := buildMCPLogID("history-transport")
 	bodyPreview := nonJSONBodyPreview(body)
+	bodyMessage := summarizeNonJSONBodyPreview(bodyPreview)
 
 	if statusCode >= 400 {
 		code = strconv.Itoa(statusCode)
 		message = "backend request failed"
 	}
-	if bodyPreview != "" {
-		message = bodyPreview
+	if bodyMessage != "" {
+		message = bodyMessage
 	}
 	if readErr != nil {
 		code = "response_read_error"
@@ -2180,7 +2181,8 @@ func parseMCPResponsePayload(resp *httpclient.Response, body []byte, encoding st
 	}
 	statusCode := responseStatusCode(resp)
 	code := "response_decode_error"
-	message := nonJSONBodyPreview(body)
+	bodyPreview := nonJSONBodyPreview(body)
+	message := summarizeNonJSONBodyPreview(bodyPreview)
 	if message == "" {
 		message = "unexpected non-json response"
 	}
@@ -2195,7 +2197,7 @@ func parseMCPResponsePayload(resp *httpclient.Response, body []byte, encoding st
 			"transport_mode": "non-json-fallback",
 			"status_code":    statusCode,
 			"encoding":       strings.TrimSpace(encoding),
-			"body_preview":   nonJSONBodyPreview(body),
+			"body_preview":   bodyPreview,
 		},
 	}
 }
@@ -2208,9 +2210,13 @@ func responseStatusCode(resp *httpclient.Response) int {
 }
 
 func nonJSONBodyPreview(body []byte) string {
-	preview := strings.TrimSpace(string(body))
+	return strings.TrimSpace(string(body))
+}
+
+func summarizeNonJSONBodyPreview(preview string) string {
+	preview = strings.TrimSpace(preview)
 	if len(preview) > 240 {
-		preview = preview[:240] + "..."
+		return preview[:240] + "..."
 	}
 	return preview
 }
