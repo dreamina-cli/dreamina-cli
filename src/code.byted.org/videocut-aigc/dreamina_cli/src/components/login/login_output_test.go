@@ -62,11 +62,11 @@ func TestRunBrowserLoginPrintsOriginalBrowserHintWithoutFallbackInstructions(t *
 	if strings.Contains(text, "如果需要 agent 手动导入登录态") {
 		t.Fatalf("did not expect manual import instructions after successful browser open: %q", text)
 	}
-	if strings.Contains(text, "Dreamina 登录成功") {
-		t.Fatalf("did not expect extra success banner: %q", text)
+	if !strings.Contains(text, "Dreamina 登录成功，本地登录态已保存。") {
+		t.Fatalf("expected success banner: %q", text)
 	}
-	if strings.Contains(text, "[DREAMINA:LOGIN_SUCCESS]") {
-		t.Fatalf("did not expect login success tag by default: %q", text)
+	if !strings.Contains(text, "[DREAMINA:LOGIN_SUCCESS]") {
+		t.Fatalf("expected login success tag by default: %q", text)
 	}
 }
 

@@ -70,8 +70,13 @@ func printDebugAuthorization(v ...any) {
 }
 
 func printLoginSuccess(v ...any) {
-	// 旧程序不会额外输出“登录成功”横幅；成功后直接进入账号摘要。
-	_ = firstAny(v...)
+	out := io.Writer(os.Stdout)
+	for _, arg := range v {
+		if writer, ok := arg.(io.Writer); ok {
+			out = writer
+		}
+	}
+	_, _ = fmt.Fprintln(out, "Dreamina 登录成功，本地登录态已保存。")
 }
 
 func printAccountSummary(v ...any) {
@@ -114,20 +119,7 @@ func printLoginStateTag(v ...any) {
 	if tag == "" {
 		return
 	}
-	if !loginStateTagEnabled() {
-		return
-	}
 	_, _ = fmt.Fprintf(out, "[DREAMINA:%s]\n", tag)
-}
-
-func loginStateTagEnabled() bool {
-	for _, key := range []string{"DREAMINA_DEBUG", "DREAMINA_TRACE"} {
-		value := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
-		if value == "1" || value == "true" || value == "yes" {
-			return true
-		}
-	}
-	return false
 }
 
 func summaryUID(summary *AccountSummary) string {

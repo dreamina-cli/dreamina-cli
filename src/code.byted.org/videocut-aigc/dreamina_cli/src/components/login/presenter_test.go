@@ -27,19 +27,15 @@ func TestPrintLoginSuccessAndSummaryMatchesOriginalStyle(t *testing.T) {
 
 	text := out.String()
 	for _, want := range []string{
+		"Dreamina 登录成功，本地登录态已保存。",
 		"UID: 4091737426886912",
 		"VIP: maestro",
 		"剩余积分: 100",
+		"[DREAMINA:LOGIN_SUCCESS]",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("unexpected output, missing %q: %q", want, text)
 		}
-	}
-	if strings.Contains(text, "Dreamina 登录成功") {
-		t.Fatalf("did not expect extra success banner: %q", text)
-	}
-	if strings.Contains(text, "[DREAMINA:LOGIN_SUCCESS]") {
-		t.Fatalf("did not expect login tag by default: %q", text)
 	}
 }
 
@@ -74,15 +70,13 @@ func TestPrintReuseSuccessAndSummaryMatchesOriginalStyle(t *testing.T) {
 	if strings.Contains(text, "已检测到有效本地登录态") {
 		t.Fatalf("did not expect extra reuse banner: %q", text)
 	}
-	if strings.Contains(text, "[DREAMINA:LOGIN_REUSED]") {
-		t.Fatalf("did not expect login tag by default: %q", text)
+	if !strings.Contains(text, "[DREAMINA:LOGIN_REUSED]") {
+		t.Fatalf("expected login tag by default: %q", text)
 	}
 }
 
-func TestPrintLoginStateTagShownWhenDebugEnabled(t *testing.T) {
+func TestPrintLoginStateTagShownByDefault(t *testing.T) {
 	t.Helper()
-
-	t.Setenv("DREAMINA_DEBUG", "1")
 
 	var out bytes.Buffer
 	printLoginStateTag(&out, "LOGIN_SUCCESS")
