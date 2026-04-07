@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -2495,6 +2497,77 @@ func TestGetHistoryByIdsKeepsFullBodyPreviewForNonJSONResponse(t *testing.T) {
 	wantMessage := longBody[:240] + "..."
 	if resp.Message != wantMessage {
 		t.Fatalf("unexpected response message: %#v", resp.Message)
+	}
+}
+
+func TestGetHistoryByIdsWritesProbeFileWhenEnabled(t *testing.T) {
+	t.Helper()
+
+	probeDir := t.TempDir()
+	if err := os.Setenv(historyProbeEnv, probeDir); err != nil {
+		t.Fatalf("set env: %v", err)
+	}
+	defer os.Unsetenv(historyProbeEnv)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeMCPJSON(t, w, map[string]any{
+			"ret":   "0",
+			"logid": "probe-history-log",
+			"data": map[string]any{
+				"submit-1": map[string]any{
+					"submit_id": "submit-1",
+					"status":    "50",
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	httpCli, err := httpclient.New(server.URL)
+	if err != nil {
+		t.Fatalf("new http client: %v", err)
+	}
+	client := New(httpCli)
+
+	_, err = client.GetHistoryByIds(context.Background(), &Session{
+		Cookie:  "sid=test",
+		Headers: map[string]string{"X-Test": "1"},
+	}, &GetHistoryByIdsRequest{SubmitIDs: []string{"submit-1"}})
+	if err != nil {
+		t.Fatalf("GetHistoryByIds failed: %v", err)
+	}
+
+	entries, err := os.ReadDir(probeDir)
+	if err != nil {
+		t.Fatalf("read probe dir: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected one probe file, got %d", len(entries))
+	}
+	body, err := os.ReadFile(filepath.Join(probeDir, entries[0].Name()))
+	if err != nil {
+		t.Fatalf("read probe file: %v", err)
+	}
+	payload := map[string]any{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("unmarshal probe payload: %v", err)
+	}
+	request, ok := payload["request"].(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected request payload: %#v", payload["request"])
+	}
+	if got := request["path"]; got != "/mweb/v1/get_history_by_ids" {
+		t.Fatalf("unexpected request path: %#v", got)
+	}
+	response, ok := payload["response"].(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected response payload: %#v", payload["response"])
+	}
+	if got := response["status_code"]; got != float64(200) {
+		t.Fatalf("unexpected response status: %#v", got)
+	}
+	if bodyText := fmt.Sprint(response["body_text"]); !strings.Contains(bodyText, "\"submit-1\"") {
+		t.Fatalf("unexpected response body text: %#v", bodyText)
 	}
 }
 

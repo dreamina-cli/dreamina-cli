@@ -25,6 +25,7 @@ type HTTPClient struct {
 const (
 	mcpAppIDHeader = "513695"
 	mcpPFHeader    = "7"
+	historyProbeEnv = "DREAMINA_DEBUG_HISTORY_PROBE_DIR"
 )
 
 // getCookieFromCookieFile  reads cookie from cookie.json file
@@ -268,8 +269,10 @@ func (c *HTTPClient) GetHistoryByIds(ctx context.Context, sess *Session, req *Ge
 	}
 	body, encoding, err := httpclient.ReadDecodedResponseBody(resp)
 	if err != nil {
+		writeHistoryProbe(request, resp, nil, "", err)
 		return buildHistoryTransportResponse(resp, nil, "", err), nil
 	}
+	writeHistoryProbe(request, resp, body, encoding, nil)
 	if !json.Valid(body) {
 		return buildHistoryTransportResponse(resp, body, encoding, nil), nil
 	}
@@ -2219,4 +2222,69 @@ func summarizeNonJSONBodyPreview(preview string) string {
 		return preview[:240] + "..."
 	}
 	return preview
+}
+
+func writeHistoryProbe(req *httpclient.Request, resp *httpclient.Response, body []byte, encoding string, readErr error) {
+	dir := strings.TrimSpace(os.Getenv(historyProbeEnv))
+	if dir == "" {
+		return
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return
+	}
+	payload := map[string]any{
+		"request": map[string]any{
+			"method":  "",
+			"path":    "",
+			"headers": map[string]string{},
+			"query":   map[string]string{},
+			"body":    "",
+		},
+		"response": map[string]any{
+			"status_code": 0,
+			"headers":     map[string]string{},
+			"encoding":    strings.TrimSpace(encoding),
+			"body_len":    len(body),
+			"body_text":   string(body),
+		},
+		"captured_at": time.Now().Format(time.RFC3339Nano),
+	}
+	if req != nil {
+		payload["request"] = map[string]any{
+			"method":  strings.TrimSpace(req.Method),
+			"path":    strings.TrimSpace(req.Path),
+			"headers": cloneStringMap(req.Headers),
+			"query":   cloneStringMap(req.Query),
+			"body":    string(req.Body),
+		}
+	}
+	if resp != nil {
+		payload["response"] = map[string]any{
+			"status_code": resp.StatusCode,
+			"headers":     cloneStringMap(resp.Headers),
+			"encoding":    strings.TrimSpace(encoding),
+			"body_len":    len(body),
+			"body_text":   string(body),
+		}
+	}
+	if readErr != nil {
+		payload["error"] = strings.TrimSpace(readErr.Error())
+	}
+	name := "history_probe_" + time.Now().Format("20060102150405.000000000") + ".json"
+	encoded, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return
+	}
+	_ = os.WriteFile(filepath.Join(dir, name), encoded, 0o600)
+}
+
+func cloneStringMap(src map[string]string) map[string]string {
+	if len(src) == 0 {
+		return map[string]string{}
+	}
+	dst := make(map[string]string, len(src))
+	for key, value := range src {
+		dst[key] = value
+	}
+	return dst
 }
