@@ -1736,6 +1736,9 @@ func TestGetHistoryByIdsKeepsEmptyBackendSuccess(t *testing.T) {
 		if r.URL.Path != "/mweb/v1/get_history_by_ids" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
+		if got := r.Header.Get("Cookie"); got != "sid=test" {
+			t.Fatalf("unexpected cookie header: %q", got)
+		}
 		writeMCPJSON(t, w, map[string]any{
 			"code":    "0",
 			"message": "ok",

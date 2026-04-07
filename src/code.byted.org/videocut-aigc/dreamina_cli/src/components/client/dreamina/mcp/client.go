@@ -251,6 +251,9 @@ func (c *HTTPClient) GetHistoryByIds(ctx context.Context, sess *Session, req *Ge
 	mergeSessionForwardHeaders(reqHeaders, sess)
 	reqHeaders["Accept"] = "application/json"
 	reqHeaders["Appid"] = mcpAppIDHeader
+	if strings.TrimSpace(sess.Cookie) != "" {
+		reqHeaders["Cookie"] = sess.Cookie
+	}
 	reqHeaders["Content-Type"] = "application/json"
 	reqHeaders["Pf"] = mcpPFHeader
 	reqHeaders["X-Tt-Logid"] = buildMCPLogID("history")
