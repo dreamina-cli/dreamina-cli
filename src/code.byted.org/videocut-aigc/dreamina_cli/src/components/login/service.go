@@ -63,6 +63,20 @@ func (s *Service) ParseAuthToken(v ...any) (any, error) {
 	return s.mgr.ParseAuthToken(v...)
 }
 
+func (s *Service) LoadCookieSession() (any, error) {
+	if s == nil || s.mgr == nil {
+		return nil, fmt.Errorf("login manager is not initialized")
+	}
+	return s.mgr.LoadCookieSession()
+}
+
+func (s *Service) RequireUsableCookieSession() error {
+	if s == nil || s.mgr == nil {
+		return fmt.Errorf("login manager is not initialized")
+	}
+	return s.mgr.RequireUsableCookieSession()
+}
+
 func (s *Service) ValidateAuthToken(v ...any) error {
 	if s == nil || s.mgr == nil {
 		return fmt.Errorf("login manager is not initialized")

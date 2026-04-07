@@ -29,9 +29,6 @@ func newQueryResultCommand(app any) *Command {
 			if err != nil {
 				return err
 			}
-			if err := appContext.RequireLogin(); err != nil {
-				return err
-			}
 			if submitID == "" {
 				return fmt.Errorf("--submit_id is required")
 			}
@@ -42,10 +39,17 @@ func newQueryResultCommand(app any) *Command {
 			queryCtx := context.Background()
 			var session any
 			if svc, ok := appContext.Login.(*login.Service); ok {
-				if payload, err := svc.ParseAuthToken(); err == nil {
-					session = payload
-					queryCtx = gen.ContextWithSession(queryCtx, payload)
+				if err := svc.RequireUsableCookieSession(); err != nil {
+					return err
 				}
+				payload, err := svc.LoadCookieSession()
+				if err != nil {
+					return err
+				}
+				session = payload
+				queryCtx = gen.ContextWithSession(queryCtx, payload)
+			} else {
+				return fmt.Errorf("login service is not configured")
 			}
 			value, err := service.QueryResult(queryCtx, submitID)
 			if err != nil {

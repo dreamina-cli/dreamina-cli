@@ -355,6 +355,32 @@ func (m *Manager) RequireUsableCredential() error {
 	return nil
 }
 
+func (m *Manager) LoadCookieSession() (any, error) {
+	// 从本地 cookie.json 读取 query_result 可直接使用的最小会话视图。
+	if m == nil {
+		return nil, fmt.Errorf("login manager is not initialized")
+	}
+	body, err := os.ReadFile(filepath.Join(m.dir, "cookie.json"))
+	if err != nil {
+		return nil, err
+	}
+	payload := map[string]any{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("decode cookie session: %w", err)
+	}
+	if cookie := strings.TrimSpace(fmt.Sprint(payload["cookie"])); cookie == "" || cookie == "<nil>" {
+		return nil, fmt.Errorf("cookie session is unusable")
+	}
+	return payload, nil
+}
+
+func (m *Manager) RequireUsableCookieSession() error {
+	if _, err := m.LoadCookieSession(); err != nil {
+		return fmt.Errorf("未检测到有效 cookie 会话，请先准备 ~/.dreamina_cli/cookie.json")
+	}
+	return nil
+}
+
 func (m *Manager) ValidateAuthToken(v ...any) error {
 	// 通过加载可用凭证来触发 auth_token 校验流程。
 	_, err := m.loadUsableCredential()

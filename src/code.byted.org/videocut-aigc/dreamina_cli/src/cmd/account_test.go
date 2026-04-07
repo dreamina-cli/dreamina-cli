@@ -134,6 +134,36 @@ func TestQueryResultCommandRejectsUnknownFlagBeforeLogin(t *testing.T) {
 	}
 }
 
+func TestQueryResultCommandUsesCookieSessionWithoutCredential(t *testing.T) {
+	t.Helper()
+
+	cfgDir := filepath.Join(t.TempDir(), ".dreamina_cli")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatalf("mkdir cfg dir: %v", err)
+	}
+	cookieBody := []byte("{\n  \"cookie\": \"sid=test-cookie\",\n  \"uid\": \"u-cookie-only\"\n}\n")
+	if err := os.WriteFile(filepath.Join(cfgDir, "cookie.json"), cookieBody, 0o600); err != nil {
+		t.Fatalf("write cookie session: %v", err)
+	}
+	t.Setenv("DREAMINA_CONFIG_DIR", cfgDir)
+
+	root := NewRootCommand()
+	var out bytes.Buffer
+	root.out = &out
+	root.SetArgs([]string{"query_result", "--submit_id=cookie-only-submit"})
+
+	_, err := root.ExecuteC()
+	if err == nil {
+		t.Fatalf("expected task-not-found error")
+	}
+	if got := err.Error(); got != `task "cookie-only-submit" not found` {
+		t.Fatalf("unexpected query_result error: %q", got)
+	}
+	if strings.Contains(out.String(), "未检测到有效登录态") {
+		t.Fatalf("query_result should not require credential when cookie.json exists: %q", out.String())
+	}
+}
+
 func TestAccountCommandsRejectUnknownFlagBeforeExecution(t *testing.T) {
 	t.Helper()
 
