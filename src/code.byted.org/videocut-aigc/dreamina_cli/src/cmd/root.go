@@ -42,6 +42,8 @@ func NewRootCommand() *Command {
 	root := &Command{Use: "dreamina"}
 	root.AddCommand(
 		newHelpCommand(root),
+		newCompletionCommand(),
+		newCompleteCommand(),
 		newLoginCommand(nil),
 		newReloginCommand(nil),
 		newImportLoginResponseCommand(nil),

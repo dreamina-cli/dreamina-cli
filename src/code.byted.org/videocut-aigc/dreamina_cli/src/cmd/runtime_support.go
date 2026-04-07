@@ -62,6 +62,9 @@ func (c *Command) ExecuteC() (*Command, error) {
 			child.ctx = c.ctx
 			child.in = c.in
 			child.out = c.out
+			if child.Use == "ref2video" {
+				_, _ = fmt.Fprintln(child.OutOrStdout(), `Command "ref2video" is deprecated, use multiframe2video instead`)
+			}
 			if len(c.args) > 1 {
 				if isHelpFlag(c.args[1]) {
 					return child, writeCommandHelp(child.OutOrStdout(), child)

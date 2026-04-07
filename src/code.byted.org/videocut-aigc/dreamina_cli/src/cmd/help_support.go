@@ -64,6 +64,22 @@ Global Flags:
       --version   print build version information
 `,
 	},
+	"completion": {
+		Raw: `Usage:
+  dreamina completion [flags]
+
+Generate the autocompletion script for dreamina for the specified shell.
+See each sub-command's help for details on how to use the generated script.
+
+
+
+Flags:
+  -h, --help   help for completion
+
+Global Flags:
+      --version   print build version information
+`,
+	},
 	"login": {
 		Raw: `Usage:
   dreamina login [flags]
@@ -348,6 +364,43 @@ Global Flags:
 Examples:
   dreamina multiframe2video --images ./a.png,./b.png --prompt="character turns around"
   dreamina multiframe2video --images ./a.png,./b.png,./c.png --transition-prompt="turn from A to B" --transition-prompt="turn from B to C"
+`,
+	},
+	"ref2video": {
+		Raw: `Usage:
+  dreamina ref2video [flags]
+
+Upload multiple local images, then submit a Dreamina intelligent multi-frame video task for coherent visual storytelling. The task is asynchronous, but --poll can wait briefly before falling back to query_result.
+
+Supported combinations:
+- inputs: 2-20 images
+- exactly 2 images: use shorthand --prompt and optional --duration
+- 3+ images: repeat --transition-prompt once per transition segment to describe how one frame evolves into the next
+- repeat --transition-duration once per transition segment, or omit it to default each segment to 3 seconds
+
+Notes:
+- designed for multi-image story generation, not full multimodal editing
+- for N images, the transition count is N-1
+- ratio is inferred from the first image
+- model_version and video_resolution overrides are not supported by this command
+- each duration segment is limited to [0.5, 8] seconds and total duration must be >= 2
+
+
+Flags:
+      --images strings                    local reference image paths
+      --prompt string                     shorthand prompt for exactly 2 images
+      --duration float                    shorthand transition duration in seconds for exactly 2 images; backend clamps each segment to [0.5, 8] and requires total duration >= 2 (default 3)
+      --transition-prompt stringArray     repeat once per transition segment; for N images provide N-1 prompts
+      --transition-duration stringArray   repeat once per transition segment in seconds; for N images provide N-1 durations, or omit to default each segment to 3
+      --poll int                          submit then poll query_result for up to N seconds at 1s intervals (0 disables polling)
+  -h, --help                              help for ref2video
+
+Global Flags:
+      --version   print build version information
+
+Examples:
+  dreamina ref2video --images ./a.png,./b.png --prompt="character turns around"
+  dreamina ref2video --images ./a.png,./b.png,./c.png --transition-prompt="turn from A to B" --transition-prompt="turn from B to C"
 `,
 	},
 	"multimodal2video": {
