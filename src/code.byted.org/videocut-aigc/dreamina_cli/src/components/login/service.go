@@ -56,6 +56,20 @@ func (s *Service) RequireUsableCredential() error {
 	return s.mgr.RequireUsableCredential()
 }
 
+func (s *Service) LoadUsableSession() (any, error) {
+	if s == nil || s.mgr == nil {
+		return nil, fmt.Errorf("login manager is not initialized")
+	}
+	return s.mgr.LoadUsableSession()
+}
+
+func (s *Service) RequireUsableSession() error {
+	if s == nil || s.mgr == nil {
+		return fmt.Errorf("login manager is not initialized")
+	}
+	return s.mgr.RequireUsableSession()
+}
+
 func (s *Service) ParseAuthToken(v ...any) (any, error) {
 	if s == nil || s.mgr == nil {
 		return nil, fmt.Errorf("login manager is not initialized")

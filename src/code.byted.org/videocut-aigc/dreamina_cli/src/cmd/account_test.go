@@ -99,6 +99,32 @@ func TestListTaskCommandRequiresLoginWithOriginalMessage(t *testing.T) {
 	}
 }
 
+func TestListTaskCommandUsesCookieSessionWithoutCredential(t *testing.T) {
+	t.Helper()
+
+	cfgDir := filepath.Join(t.TempDir(), ".dreamina_cli")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatalf("mkdir cfg dir: %v", err)
+	}
+	cookieBody := []byte("{\n  \"cookie\": \"sid=test-cookie\",\n  \"uid\": \"u-cookie-only\"\n}\n")
+	if err := os.WriteFile(filepath.Join(cfgDir, "cookie.json"), cookieBody, 0o600); err != nil {
+		t.Fatalf("write cookie session: %v", err)
+	}
+	t.Setenv("DREAMINA_CONFIG_DIR", cfgDir)
+
+	root := NewRootCommand()
+	var out bytes.Buffer
+	root.out = &out
+	root.SetArgs([]string{"list_task"})
+
+	if _, err := root.ExecuteC(); err != nil {
+		t.Fatalf("list_task should accept cookie-only session: %v", err)
+	}
+	if got := out.String(); got != "[]\n" {
+		t.Fatalf("unexpected list_task output: %q", got)
+	}
+}
+
 func TestListTaskCommandRejectsUnknownFlagBeforeLogin(t *testing.T) {
 	t.Helper()
 

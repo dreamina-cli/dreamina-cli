@@ -174,7 +174,7 @@ func runGeneratorSubmit(ctx context.Context, cmd *Command, app any, genTaskType 
 	}
 	submitUID := "local-user"
 	if svc, ok := appContext.Login.(*login.Service); ok {
-		if payload, err := svc.ParseAuthToken(); err == nil {
+		if payload, err := svc.LoadUsableSession(); err == nil {
 			ctx = gen.ContextWithSession(ctx, payload)
 			if uid := currentUserIDFromSession(payload); uid != "" {
 				submitUID = uid

@@ -355,6 +355,22 @@ func (m *Manager) RequireUsableCredential() error {
 	return nil
 }
 
+func (m *Manager) LoadUsableSession() (any, error) {
+	// 优先读取 cookie.json；只有 cookie 会话不可用时，才回退到 credential.json 解析 auth_token。
+	if payload, err := m.LoadCookieSession(); err == nil {
+		return payload, nil
+	}
+	return m.ParseAuthToken()
+}
+
+func (m *Manager) RequireUsableSession() error {
+	// 只要本地存在可用 cookie 会话或 credential 登录态，就视为已经登录。
+	if _, err := m.LoadUsableSession(); err != nil {
+		return fmt.Errorf("未检测到有效登录态，请先执行 dreamina login")
+	}
+	return nil
+}
+
 func (m *Manager) LoadCookieSession() (any, error) {
 	// 从本地 cookie.json 读取 query_result 可直接使用的最小会话视图。
 	if m == nil {

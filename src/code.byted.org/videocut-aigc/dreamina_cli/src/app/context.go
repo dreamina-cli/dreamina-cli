@@ -90,7 +90,7 @@ func (a *AppContext) RequireLogin() error {
 		return errors.New("login is not configured")
 	}
 	if svc, ok := a.Login.(*login.Service); ok {
-		return svc.RequireUsableCredential()
+		return svc.RequireUsableSession()
 	}
 	return nil
 }

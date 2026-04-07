@@ -205,7 +205,7 @@ func newListTaskCommand(app any) *Command {
 			}
 			if filter.UID == "" {
 				if svc, ok := appContext.Login.(*login.Service); ok {
-					if payload, err := svc.ParseAuthToken(); err == nil {
+					if payload, err := svc.LoadUsableSession(); err == nil {
 						filter.UID = currentUserIDFromSession(payload)
 					}
 				}

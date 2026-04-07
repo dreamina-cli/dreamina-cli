@@ -42,7 +42,7 @@ func newUserCreditCommand(app any) *Command {
 			if !ok {
 				return fmt.Errorf("login service is not configured")
 			}
-			session, err := svc.ParseAuthToken()
+			session, err := svc.LoadUsableSession()
 			if err != nil {
 				return err
 			}
