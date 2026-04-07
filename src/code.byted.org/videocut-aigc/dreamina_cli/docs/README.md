@@ -5,13 +5,14 @@
 ## 建议阅读顺序
 
 1. `命令速查与Curl速览.md`
-2. `GENERATOR_COMMANDS.md`
-3. `GEN_FLOW.md`
-4. `LOGIN_FLOW.md`
-5. `TASK_STORE.md`
-6. `命令请求流程与Curl示例.md`
-7. `旧新二进制对比脚本.md`
-8. `发布前回归.md`
+2. `命令用法.md`
+3. `GENERATOR_COMMANDS.md`
+4. `GEN_FLOW.md`
+5. `LOGIN_FLOW.md`
+6. `TASK_STORE.md`
+7. `命令请求流程与Curl示例.md`
+8. `旧新二进制对比脚本.md`
+9. `发布前回归.md`
 
 ## 文档清单
 
@@ -26,6 +27,7 @@
 - `SOURCE_TREE_COVERAGE.md`：源码树覆盖范围与当前还原状态
 - `SYMBOL_INDEX.md`：主要包、类型、函数的索引
 - `TASK_STORE.md`：本地任务库存储结构和查询语义
+- `命令用法.md`：基于 `help` 内容整理的中文用法说明，适合首次接触命令行工具时快速上手
 - `命令速查与Curl速览.md`：适合日常使用的精简命令入口与 curl 速览
 - `命令请求流程与Curl示例.md`：完整请求链路、完整 curl 对齐示例与更细的验证说明
 - `还原计划.md`：本仓库从恢复态到工程化整理态的处理说明
