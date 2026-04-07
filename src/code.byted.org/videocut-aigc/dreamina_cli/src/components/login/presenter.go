@@ -136,8 +136,12 @@ func summaryRemainingCredit(credit *UserCredit) int {
 	if credit == nil {
 		return 0
 	}
+	summedCredit := credit.CreditCount + credit.VIPCredit + credit.GiftCredit + credit.PurchaseCredit
+	if summedCredit > 0 {
+		return summedCredit
+	}
 	if credit.TotalCredit > 0 {
 		return credit.TotalCredit
 	}
-	return credit.CreditCount
+	return 0
 }

@@ -85,3 +85,32 @@ func TestPrintLoginStateTagShownByDefault(t *testing.T) {
 		t.Fatalf("unexpected tag output: %q", got)
 	}
 }
+
+func TestPrintAccountSummarySumsAllCreditBuckets(t *testing.T) {
+	t.Helper()
+
+	var out bytes.Buffer
+	summary := &AccountSummary{
+		UserInfo: &UserInfo{
+			UserID: "71890275940283",
+		},
+		UserCredit: &UserCredit{
+			CreditCount:    10,
+			VIPCredit:      20,
+			GiftCredit:     30,
+			PurchaseCredit: 5,
+			TotalCredit:    12,
+			BenefitType:    "maestro",
+		},
+	}
+
+	printAccountSummary(&out, summary)
+
+	text := out.String()
+	if !strings.Contains(text, "剩余积分: 65") {
+		t.Fatalf("expected summed credit output, got %q", text)
+	}
+	if strings.Contains(text, "剩余积分: 12") {
+		t.Fatalf("did not expect stale total credit output: %q", text)
+	}
+}

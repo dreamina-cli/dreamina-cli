@@ -34,9 +34,12 @@ type UserInfo struct {
 }
 
 type UserCredit struct {
-	CreditCount int    `json:"credit_count,omitempty"`
-	TotalCredit int    `json:"total_credit,omitempty"`
-	BenefitType string `json:"benefit_type,omitempty"`
+	CreditCount    int    `json:"credit_count,omitempty"`
+	VIPCredit      int    `json:"vip_credit,omitempty"`
+	GiftCredit     int    `json:"gift_credit,omitempty"`
+	PurchaseCredit int    `json:"purchase_credit,omitempty"`
+	TotalCredit    int    `json:"total_credit,omitempty"`
+	BenefitType    string `json:"benefit_type,omitempty"`
 }
 
 type formattedSessionPayload struct {

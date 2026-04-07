@@ -34,6 +34,9 @@ func TestFetchAccountSummaryFromPayloadAcceptsPartialCreditSuccess(t *testing.T)
 	if summary.UserCredit.CreditCount != 7 || summary.UserCredit.BenefitType != "vip" {
 		t.Fatalf("unexpected user credit: %#v", summary.UserCredit)
 	}
+	if summary.UserCredit.VIPCredit != 0 || summary.UserCredit.GiftCredit != 0 || summary.UserCredit.PurchaseCredit != 0 || summary.UserCredit.TotalCredit != 0 {
+		t.Fatalf("unexpected extra credit fields: %#v", summary.UserCredit)
+	}
 	if summary.UserInfo != nil {
 		t.Fatalf("expected nil user info without fallback uid: %#v", summary.UserInfo)
 	}
@@ -125,5 +128,37 @@ func TestFetchAccountSummaryFromPayloadReturnsErrorWhenBothProbesFail(t *testing
 	}
 	if err.Error() != "user info failed; user credit failed" {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestFetchAccountSummaryFromPayloadPreservesAllCreditBuckets(t *testing.T) {
+	t.Helper()
+
+	summary, err := fetchAccountSummaryFromPayload(
+		map[string]any{
+			"cookie": "sid=test",
+		},
+		func(ctx context.Context, session any) (*commerceclient.UserInfo, error) {
+			return nil, errors.New("user info down")
+		},
+		func(ctx context.Context, session any) (*commerceclient.UserCredit, error) {
+			return &commerceclient.UserCredit{
+				CreditCount:    10,
+				VIPCredit:      20,
+				GiftCredit:     30,
+				PurchaseCredit: 5,
+				TotalCredit:    12,
+				BenefitType:    "maestro",
+			}, nil
+		},
+	)
+	if err != nil {
+		t.Fatalf("fetchAccountSummaryFromPayload failed: %v", err)
+	}
+	if summary == nil || summary.UserCredit == nil {
+		t.Fatalf("expected summary with user credit: %#v", summary)
+	}
+	if summary.UserCredit.CreditCount != 10 || summary.UserCredit.VIPCredit != 20 || summary.UserCredit.GiftCredit != 30 || summary.UserCredit.PurchaseCredit != 5 || summary.UserCredit.TotalCredit != 12 {
+		t.Fatalf("unexpected user credit buckets: %#v", summary.UserCredit)
 	}
 }

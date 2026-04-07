@@ -321,9 +321,12 @@ func fetchAccountSummaryFromPayload(payload any, userInfoProbe UserInfoProbe, us
 	}
 	if commerceCredit != nil {
 		summary.UserCredit = &UserCredit{
-			CreditCount: commerceCredit.CreditCount,
-			TotalCredit: commerceCredit.TotalCredit,
-			BenefitType: commerceCredit.BenefitType,
+			CreditCount:    commerceCredit.CreditCount,
+			VIPCredit:      commerceCredit.VIPCredit,
+			GiftCredit:     commerceCredit.GiftCredit,
+			PurchaseCredit: commerceCredit.PurchaseCredit,
+			TotalCredit:    commerceCredit.TotalCredit,
+			BenefitType:    commerceCredit.BenefitType,
 		}
 	}
 	// 原始行为更接近“部分成功可接受，但两个探针都失败不能伪装成成功摘要”。
@@ -331,9 +334,12 @@ func fetchAccountSummaryFromPayload(payload any, userInfoProbe UserInfoProbe, us
 	if summary.UserInfo != nil || summary.UserCredit != nil {
 		if summary.UserCredit == nil {
 			summary.UserCredit = &UserCredit{
-				CreditCount: 0,
-				TotalCredit: 0,
-				BenefitType: "",
+				CreditCount:    0,
+				VIPCredit:      0,
+				GiftCredit:     0,
+				PurchaseCredit: 0,
+				TotalCredit:    0,
+				BenefitType:    "",
 			}
 		}
 		return summary, nil
