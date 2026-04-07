@@ -9,6 +9,7 @@ import (
 	"time"
 
 	commerceclient "code.byted.org/videocut-aigc/dreamina_cli/components/client/dreamina/commerce"
+	mcpclient "code.byted.org/videocut-aigc/dreamina_cli/components/client/dreamina/mcp"
 )
 
 func TestLogoutCommandWithoutCredentialMatchesOriginalMessage(t *testing.T) {
@@ -326,6 +327,62 @@ func TestBuildUserCreditOutputMatchesOriginalPublicShape(t *testing.T) {
 	})
 	if got.VIPCredit != 20 || got.GiftCredit != 20 || got.PurchaseCredit != 0 || got.TotalCredit != 40 {
 		t.Fatalf("unexpected user_credit output: %#v", got)
+	}
+}
+
+func TestBuildQueryResultMCPSessionPreservesCookieHeadersAndUID(t *testing.T) {
+	t.Helper()
+
+	session := buildQueryResultMCPSession(map[string]any{
+		"cookie": "sid=test-cookie",
+		"headers": map[string]any{
+			"User-Agent": "ua-test",
+			"X-Test":     "1",
+		},
+		"uid": "user-1",
+	})
+	if session == nil {
+		t.Fatalf("expected session")
+	}
+	if session.Cookie != "sid=test-cookie" {
+		t.Fatalf("unexpected session cookie: %#v", session.Cookie)
+	}
+	if session.Headers["User-Agent"] != "ua-test" || session.Headers["X-Test"] != "1" {
+		t.Fatalf("unexpected session headers: %#v", session.Headers)
+	}
+	if session.UserID != "user-1" {
+		t.Fatalf("unexpected session user id: %#v", session.UserID)
+	}
+}
+
+func TestQueryResultMatchedRawItemReturnsRawMatchedBySubmitID(t *testing.T) {
+	t.Helper()
+
+	resp := &mcpclient.GetHistoryByIdsResponse{
+		Items: map[string]*mcpclient.HistoryItem{
+			"other": {
+				SubmitID: "other",
+				Raw:      map[string]any{"submit_id": "other"},
+			},
+			"record-1": {
+				SubmitID:        "submit-1",
+				HistoryID:       "hist-1",
+				HistoryRecordID: "record-1",
+				Raw: map[string]any{
+					"submit_id":         "submit-1",
+					"history_record_id": "record-1",
+					"prompt":            "raw value",
+				},
+			},
+		},
+	}
+
+	got, ok := queryResultMatchedRawItem(resp, "submit-1").(map[string]any)
+	if !ok {
+		t.Fatalf("expected raw map, got %T", queryResultMatchedRawItem(resp, "submit-1"))
+	}
+	if got["prompt"] != "raw value" {
+		t.Fatalf("unexpected raw item: %#v", got)
 	}
 }
 

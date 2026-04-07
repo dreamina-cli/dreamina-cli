@@ -10,6 +10,7 @@ import (
 
 	appctx "code.byted.org/videocut-aigc/dreamina_cli/app"
 	commerceclient "code.byted.org/videocut-aigc/dreamina_cli/components/client/dreamina/commerce"
+	mcpclient "code.byted.org/videocut-aigc/dreamina_cli/components/client/dreamina/mcp"
 	"code.byted.org/videocut-aigc/dreamina_cli/components/gen"
 	"code.byted.org/videocut-aigc/dreamina_cli/components/login"
 	"code.byted.org/videocut-aigc/dreamina_cli/components/task"
@@ -31,6 +32,15 @@ func newQueryResultCommand(app any) *Command {
 			}
 			if submitID == "" {
 				return fmt.Errorf("--submit_id is required")
+			}
+			if downloadDir == "" {
+				raw, matched, err := queryResultRawRemoteOutput(appContext, submitID)
+				if err != nil {
+					return err
+				}
+				if matched {
+					return printJSON(raw, cmd.OutOrStdout())
+				}
 			}
 			service, ok := appContext.GenService().(*gen.Service)
 			if !ok {
@@ -86,6 +96,89 @@ func newQueryResultCommand(app any) *Command {
 			return printJSON(output, cmd.OutOrStdout())
 		},
 	}
+}
+
+func queryResultRawRemoteOutput(appContext *appctx.AppContext, submitID string) (any, bool, error) {
+	if appContext == nil {
+		return nil, false, fmt.Errorf("app context is not initialized")
+	}
+	svc, ok := appContext.Login.(*login.Service)
+	if !ok {
+		return nil, false, fmt.Errorf("login service is not configured")
+	}
+	if err := svc.RequireUsableCookieSession(); err != nil {
+		return nil, false, err
+	}
+	payload, err := svc.LoadCookieSession()
+	if err != nil {
+		return nil, false, err
+	}
+	client, ok := appContext.Clients.MCP.(*mcpclient.HTTPClient)
+	if !ok {
+		return nil, false, fmt.Errorf("mcp client is not configured")
+	}
+	resp, err := client.GetHistoryByIds(context.Background(), buildQueryResultMCPSession(payload), &mcpclient.GetHistoryByIdsRequest{
+		SubmitIDs: []string{strings.TrimSpace(submitID)},
+		NeedBatch: true,
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	raw := queryResultMatchedRawItem(resp, submitID)
+	return raw, raw != nil, nil
+}
+
+func buildQueryResultMCPSession(payload any) *mcpclient.Session {
+	root, ok := payload.(map[string]any)
+	if !ok {
+		return nil
+	}
+	session := &mcpclient.Session{
+		Headers: map[string]string{},
+	}
+	if cookie := strings.TrimSpace(fmt.Sprint(root["cookie"])); cookie != "" && cookie != "<nil>" {
+		session.Cookie = cookie
+	}
+	if rawHeaders, ok := root["headers"].(map[string]any); ok {
+		for key, value := range rawHeaders {
+			key = strings.TrimSpace(key)
+			text := strings.TrimSpace(fmt.Sprint(value))
+			if key != "" && text != "" && text != "<nil>" {
+				session.Headers[key] = text
+			}
+		}
+	}
+	if uid := currentUserIDFromSession(root); uid != "" {
+		session.UserID = uid
+	}
+	if session.Cookie == "" {
+		return nil
+	}
+	return session
+}
+
+func queryResultMatchedRawItem(resp *mcpclient.GetHistoryByIdsResponse, submitID string) any {
+	if resp == nil || len(resp.Items) == 0 {
+		return nil
+	}
+	submitID = strings.TrimSpace(submitID)
+	for key, item := range resp.Items {
+		if item == nil {
+			continue
+		}
+		if strings.TrimSpace(key) != submitID &&
+			strings.TrimSpace(item.GetSubmitID()) != submitID &&
+			strings.TrimSpace(item.GetHistoryID()) != submitID &&
+			strings.TrimSpace(item.HistoryRecordID) != submitID &&
+			strings.TrimSpace(item.TaskID) != submitID {
+			continue
+		}
+		if len(item.Raw) != 0 {
+			return item.Raw
+		}
+		return item.View()
+	}
+	return nil
 }
 
 // newListTaskCommand 创建列出本地任务记录的命令入口。
