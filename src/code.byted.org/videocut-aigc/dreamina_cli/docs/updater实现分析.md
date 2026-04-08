@@ -63,6 +63,12 @@
 fmt.Sprintf("%s/%s", "https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp", "version.json")
 ```
 
+对应的完整地址为：
+
+```text
+https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp/version.json
+```
+
 ### HTTP 请求行为
 
 `downloadJSONFromCDN` 执行流程：
