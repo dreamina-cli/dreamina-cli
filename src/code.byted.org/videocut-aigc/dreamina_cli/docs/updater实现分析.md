@@ -141,6 +141,24 @@ https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp/v
 
 字段命名以源码为准，此处仅用于解释打印逻辑。
 
+## VersionInfo 字段语义（结合远端版本文件）
+
+从远端 `version.json` 的实际内容可确认 `VersionInfo` 的 3 个字符串字段语义：
+
+```json
+{
+    "version": "1.3.3",
+    "release_date": "2026-04-07",
+    "release_notes": "修复了超清图片任务一直处于排队的问题"
+}
+```
+
+结合 `VersionInfo` 的 3 个 `string` 字段数量，可判断其字段对应：
+
+- `version`
+- `release_date`
+- `release_notes`
+
 ## 备注：与旧结论的修正
 
 先前版本分析曾误写节流窗口为 24 小时。此次重新校验后确认：
