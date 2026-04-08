@@ -51,21 +51,17 @@
 
 ## 远端版本获取
 
-### URL 构造（已确认 + 未确认部分）
+### URL 构造（已确认）
 
-`downloadJSONFromCDN` 使用 `fmt.Sprintf`，格式串前缀已确认是 `%s/%s`。对应的 `version.json` 字面量也已定位到 rodata，说明这里就是两段字符串拼接为 URL。
-
-因此可确认的部分是：
-
-```go
-fmt.Sprintf("%s/%s", <base>, "version.json")
-```
-
-未确认部分是 `<base>` 的来源。二进制内存在 CDN 基础地址字符串：
+`downloadJSONFromCDN` 使用 `fmt.Sprintf`，格式串前缀已确认是 `%s/%s`。同时已从 `__DATA_CONST.__rodata` 的字符串头解析出 `<base>` 指针，确定 `base` 为固定常量：
 
 - `https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp`
 
-但目前尚未把它和 `downloadJSONFromCDN` 的 `base` 形参/常量位置一一对应，需继续做 rodata 地址回溯。
+因此 URL 拼接可以确认为：
+
+```go
+fmt.Sprintf("%s/%s", "https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp", "version.json")
+```
 
 ### HTTP 请求行为
 
