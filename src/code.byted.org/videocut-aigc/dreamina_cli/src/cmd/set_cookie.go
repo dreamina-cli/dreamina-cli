@@ -18,15 +18,13 @@ func newSetCookieCommand(app any) *Command {
 	return &Command{
 		Use: "set_cookie",
 		RunE: func(cmd *Command, args []string) error {
-			if len(args) < 2 {
-				return fmt.Errorf("usage: dreamina set_cookie <uid> <cookie>")
+			uid, cookie, err := parseSetCookieArgs(args)
+			if err != nil {
+				return err
 			}
 
-			uid := args[0]
-			cookie := args[1]
-
 			// 保存cookie到 ~/.dreamina_cli/cookie.json
-			err := saveCookieToFile(uid, cookie)
+			err = saveCookieToFile(uid, cookie)
 			if err != nil {
 				return fmt.Errorf("failed to save cookie: %w", err)
 			}
@@ -37,6 +35,58 @@ func newSetCookieCommand(app any) *Command {
 			return nil
 		},
 	}
+}
+
+func parseSetCookieArgs(args []string) (string, string, error) {
+	var uid string
+	var cookie string
+
+	for i := 0; i < len(args); i++ {
+		arg := strings.TrimSpace(args[i])
+		if arg == "" {
+			continue
+		}
+		if !strings.HasPrefix(arg, "-") {
+			return "", "", fmt.Errorf("unknown command %q for %q", arg, "dreamina set_cookie")
+		}
+
+		switch {
+		case strings.HasPrefix(arg, "--uid="):
+			uid = strings.TrimSpace(strings.TrimPrefix(arg, "--uid="))
+		case arg == "--uid":
+			if i+1 >= len(args) {
+				return "", "", fmt.Errorf("flag needs an argument: --uid")
+			}
+			i++
+			uid = strings.TrimSpace(args[i])
+		case strings.HasPrefix(arg, "--cookie="):
+			cookie = strings.TrimSpace(strings.TrimPrefix(arg, "--cookie="))
+		case arg == "--cookie":
+			if i+1 >= len(args) {
+				return "", "", fmt.Errorf("flag needs an argument: --cookie")
+			}
+			i++
+			cookie = strings.TrimSpace(args[i])
+		default:
+			name := arg
+			if idx := strings.Index(name, "="); idx >= 0 {
+				name = name[:idx]
+			}
+			return "", "", fmt.Errorf("unknown flag: %s", name)
+		}
+	}
+
+	missing := make([]string, 0, 2)
+	if uid == "" {
+		missing = append(missing, "uid")
+	}
+	if cookie == "" {
+		missing = append(missing, "cookie")
+	}
+	if len(missing) > 0 {
+		return "", "", fmt.Errorf(`required flag(s) "%s" not set`, strings.Join(missing, "\", \""))
+	}
+	return uid, cookie, nil
 }
 
 func saveCookieToFile(uid, cookie string) error {
