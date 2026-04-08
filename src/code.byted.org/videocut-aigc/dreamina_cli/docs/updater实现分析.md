@@ -51,29 +51,27 @@
 
 ## 远端版本获取
 
-### URL 构造（高置信度推断）
+### URL 构造（已确认 + 未确认部分）
 
-`downloadJSONFromCDN` 使用 `fmt.Sprintf`，格式串长度为 5，极大概率为：
+`downloadJSONFromCDN` 使用 `fmt.Sprintf`，格式串前缀已确认是 `%s/%s`。对应的 `version.json` 字面量也已定位到 rodata，说明这里就是两段字符串拼接为 URL。
+
+因此可确认的部分是：
 
 ```go
-fmt.Sprintf("%s/%s", base, "version.json")
+fmt.Sprintf("%s/%s", <base>, "version.json")
 ```
 
-推断依据：
+未确认部分是 `<base>` 的来源。二进制内存在 CDN 基础地址字符串：
 
-- 参与 `fmt.Sprintf` 的参数有 2 个字符串
-- 5 字符长度最匹配 `%s/%s`
-- 二进制中存在 `version.json` 字面量
-- 二进制中存在 CDN 基础地址字符串：
-  - `https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp`
+- `https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp`
 
-因此推断：最终 URL 为 `base + "/version.json"`。
+但目前尚未把它和 `downloadJSONFromCDN` 的 `base` 形参/常量位置一一对应，需继续做 rodata 地址回溯。
 
 ### HTTP 请求行为
 
 `downloadJSONFromCDN` 执行流程：
 
-1. `http.NewRequestWithContext(ctx, "GET", url, nil)`
+1. `http.NewRequestWithContext(ctx, "GET", url, nil)`（`GET` 字符串在 rodata 中已确认）
 2. 使用默认 `http.Client` 执行
 3. 若 `StatusCode != 200` 报错
 4. `io.ReadAll(resp.Body)` 读返回体
@@ -84,6 +82,10 @@ fmt.Sprintf("%s/%s", base, "version.json")
 解析失败时返回错误：
 
 `parse remote version.json failed: %w`
+
+此外，在 `downloadJSONFromCDN` 中可见错误格式串：
+
+`unexpected status code: %d`
 
 ## 本地缓存路径与格式
 
