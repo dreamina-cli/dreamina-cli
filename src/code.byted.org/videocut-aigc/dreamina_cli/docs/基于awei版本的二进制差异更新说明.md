@@ -1,0 +1,285 @@
+# 基于 `/Users/awei/dreamina` 的二进制差异更新说明
+
+本文以 `/Users/awei/dreamina` 为基准，分析另一份本地安装二进制的差异。
+
+## 分析前提
+
+- 用户指定的目标路径是 `/Users/saaspit/.local/bin/dreamina`。
+- 当前机器上该路径不存在，也不存在 `/Users/saaspit` 目录。
+- 当前机器上唯一存在的安装位是 `/Users/awei/.local/bin/dreamina`。
+
+因此，本文实际对比的是：
+
+- 基准版本：`/Users/awei/dreamina`
+- 对比版本：`/Users/awei/.local/bin/dreamina`
+
+如果后续能拿到真正的 `/Users/saaspit/.local/bin/dreamina`，需要重新复核本文结论。
+
+## 对比方法
+
+本次主要使用以下方式做静态比对：
+
+- `--help`
+- `query_result --help`
+- `version`
+- `go version -m`
+- `go tool nm`
+- `strings`
+- 文件大小、修改时间、哈希
+
+## 总结结论
+
+从 CLI 表面命令看，两份二进制基本保持一致：
+
+- 根命令 `--help` 一致
+- `query_result --help` 一致
+- 已暴露的主命令集未发现增删
+
+但从二进制内部实现看，对比版本已经明显比基准版本更新，差异主要集中在四类：
+
+1. 构建版本更晚，提交号不同
+2. 新增了内置更新探测逻辑
+3. 扩展了视频模型枚举，加入 VIP 相关模型
+4. 内部依赖集和符号数量略有增加
+
+## 一、构建信息差异
+
+### 1. 文件元信息
+
+- `/Users/awei/dreamina`
+  - 大小：`46207442` bytes
+  - 修改时间：`2026-04-08 10:09:15`
+- `/Users/awei/.local/bin/dreamina`
+  - 大小：`46261074` bytes
+  - 修改时间：`2026-04-08 09:24:21`
+
+对比版本比基准版本大 `53632` bytes，说明它不是同一个产物。
+
+### 2. `version` 输出
+
+基准版本：
+
+```json
+{
+  "version": "4946b9d-dirty",
+  "commit": "4946b9d",
+  "build_time": "2026-03-31T07:24:44Z"
+}
+```
+
+对比版本：
+
+```json
+{
+  "version": "5a448f5-dirty",
+  "commit": "5a448f5",
+  "build_time": "2026-04-07T01:32:25Z"
+}
+```
+
+结论：
+
+- 对比版本构建时间更晚
+- 对比版本对应的源码提交不同
+- 两者都带 `dirty` 标记，说明都不是完全干净工作区构建
+
+### 3. `go version -m` 差异
+
+共同点：
+
+- 都是 `go1.26.0`
+- 都是 `darwin/arm64`
+- 都是 `CGO_ENABLED=0`
+- 模块路径相同：`code.byted.org/videocut-aigc/dreamina_cli`
+
+差异点：
+
+- 基准版本模块版本：`v0.0.0-20260331072411-4946b9dbeea2+dirty`
+- 对比版本模块版本：`v0.0.0-20260407013155-5a448f5f9117+dirty`
+
+对比版本还出现了基准版本里没有看到的依赖：
+
+- `code.byted.org/net-fe/cdn-uploadx-go-sdk v0.0.6`
+- `golang.org/x/mod v0.29.0`
+
+这说明对比版本在 2026-04-07 这次构建时，依赖树已经继续演进。
+
+## 二、命令面差异
+
+### 1. 根帮助一致
+
+两份二进制的根命令帮助完全一致，至少下列内容未发生变化：
+
+- 内建命令列表
+- 生成命令列表
+- 登录、查询、积分、版本等入口
+- 帮助文案结构
+
+### 2. `query_result --help` 一致
+
+两份二进制对 `query_result` 的帮助也一致：
+
+- 都支持 `--submit_id`
+- 都支持 `--download_dir`
+- 示例命令一致
+
+这意味着：
+
+- 至少从 CLI 参数定义层面，`query_result` 没有新增或移除对外参数
+- 如果运行时行为存在差异，更可能来自内部请求链路、解析逻辑或后处理逻辑，而不是 flag 面变化
+
+## 三、已确认的功能差异
+
+### 1. 对比版本新增了内置更新探测逻辑
+
+在对比版本中，新增了一组完整的 `components/updater` 符号，基准版本中没有：
+
+- `components/updater.CheckUpdateAsync`
+- `components/updater.PrintUpdateResult`
+- `components/updater.fetchLatestVersionFromCDN`
+- `components/updater.downloadJSONFromCDN`
+- `components/updater.getLocalVersion`
+- `components/updater.getLocalVersionFilePath`
+
+同时，可见字符串里也出现了更新相关信息，例如：
+
+- `parse remote version.json failed: %w`
+- `version.json`
+
+这说明对比版本已经内置了“远程版本检查 / 更新提示”能力，而基准版本没有这套实现证据。
+
+保守结论：
+
+- 对比版本会在运行过程中探测远端版本信息
+- 它至少具备“下载版本元数据并打印更新结果”的能力
+- 目前还没有进一步动态验证它是在什么时机触发，也没有确认具体 CDN 地址
+
+### 2. 对比版本新增了 VIP 模型枚举
+
+这是本次最明确的业务差异之一。
+
+基准版本中，与视频模型相关的字符串主要是：
+
+- `seedance2.0`
+- `seedance2.0fast`
+
+而对比版本中，新增了：
+
+- `seedance2.0_vip`
+- `seedance2.0fast_vip`
+
+同时，对比版本的帮助字符串和参数说明里也出现了对应扩展，例如：
+
+- `supported values: seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip`
+- `supported values: 3.0, 3.5pro, seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip; default: seedance2.0fast`
+- `advanced model_version values: 3.0, 3.0fast, 3.0pro, 3.0_fast, 3.0_pro, 3.5pro, 3.5_pro, seedance2.0, seedance2.0fast, seedance2.0_vip, seedance2.0fast_vip`
+
+这说明对比版本至少在以下层面已经支持 VIP 模型：
+
+- 模型值枚举
+- CLI 帮助文本
+- 参数校验提示
+
+保守结论：
+
+- 对比版本已经内置 VIP 模型常量和相关文案
+- 这不是单纯前端文案变化，而是二进制内部字符串集已经扩展
+
+### 3. 对比版本保留并扩展了既有高级模型描述
+
+除了 VIP 模型，对比版本对高级模型的文字说明也更完整，例如：
+
+- `3.0fast`
+- `3.0pro`
+- `3.0_fast`
+- `3.0_pro`
+- `3.5_pro`
+
+而基准版本对应字符串集合更保守。
+
+这说明对比版本在“模型别名 / 模型版本兼容写法”上比基准版本更丰富。
+
+## 四、内部实现差异
+
+### 1. 符号数量略有增加
+
+- 基准版本符号数：`51434`
+- 对比版本符号数：`51472`
+
+净增加 `38` 个符号。
+
+这和上面看到的 `components/updater` 新模块、模型相关字符串扩展是吻合的。
+
+### 2. 目标版本中未发现基准独有的 Dreamina 自有符号
+
+从 `go tool nm` 的 `dreamina_cli` 自身符号对比看：
+
+- 未发现明显的“基准有、对比版本没有”的 `dreamina_cli` 自有函数
+- 发现的是“对比版本新增了一批 updater 符号”
+
+这说明：
+
+- 对比版本更像是在基准版本上继续增加功能
+- 而不是大规模删减既有能力
+
+### 3. `help` 一致但内部可见字符串已扩展
+
+这是一个重要特征：
+
+- 对外帮助文本大体不变
+- 但内部字符串已经新增 VIP 模型、更新探测、更多模型别名
+
+说明对比版本的更新偏向“内部能力扩展”和“模型支持扩充”，而不是重新设计 CLI 结构。
+
+## 五、当前没有证据支持的结论
+
+以下事项目前没有通过这轮静态比对直接证实，不能在结论里写成确定事实：
+
+- `query_result` 的实际请求参数是否变化
+- `user_credit` 的真实请求/响应链路是否变化
+- cookie、credential、auth_token 的序列化结构是否变化
+- 更新探测的触发时机与输出方式
+- VIP 模型是否在所有相关命令都实际可用
+
+要确认这些，需要再做动态探测：
+
+- 真实运行对应命令
+- 抓最终请求头、请求体、响应体
+- 必要时继续反汇编具体函数
+
+## 六、对更新工作的直接启发
+
+如果要让当前仓库对齐对比版本，优先级建议如下：
+
+1. 先补模型枚举和帮助文案
+   - 增加 `seedance2.0_vip`
+   - 增加 `seedance2.0fast_vip`
+   - 对齐相关命令的模型说明
+
+2. 再补更新探测能力
+   - 对齐 `version.json` 拉取逻辑
+   - 对齐本地版本获取和异步提示逻辑
+
+3. 最后做动态链路核对
+   - 重点检查 `query_result`
+   - 重点检查 `user_credit`
+   - 核实更新后二进制是否真的改变请求行为，而不只是字符串变化
+
+## 七、结论
+
+以 `/Users/awei/dreamina` 为基准，对比版本 `/Users/awei/.local/bin/dreamina` 可以确认是一个更晚的构建，不是同一份二进制。
+
+目前已确认的主要差异是：
+
+- 版本提交更晚
+- 增加了内置更新探测逻辑
+- 增加了 VIP 模型支持
+- 增强了高级模型枚举和帮助字符串
+
+目前未发现的差异是：
+
+- 根命令帮助差异
+- `query_result --help` 差异
+- 已暴露命令集增删
+
+因此，从可验证证据看，这次更新更像是“在不改外部命令框架的前提下，扩展模型能力并加入更新提示机制”的一次版本推进。
