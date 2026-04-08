@@ -5,6 +5,8 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -359,11 +361,19 @@ func buildCurlCommand(v ...any) string {
 }
 
 func collectCommerceHeaders(session any) map[string]string {
+	headers := map[string]string{}
+	
+	// 优先从cookie.json读取cookie
+	if cookie := getCookieFromCookieFile(); cookie != "" {
+		setCommerceHeader(headers, "Cookie", cookie)
+		return headers
+	}
+	
+	// 如果没有cookie.json，从session中读取
 	root, ok := session.(map[string]any)
 	if !ok {
-		return map[string]string{}
+		return headers
 	}
-	headers := map[string]string{}
 	if cookie := strings.TrimSpace(fmt.Sprint(root["cookie"])); cookie != "" && cookie != "<nil>" {
 		setCommerceHeader(headers, "Cookie", cookie)
 	}
@@ -700,6 +710,30 @@ func sortedKeys(m map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func getCookieFromCookieFile() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	
+	cookiePath := filepath.Join(home, ".dreamina_cli", "cookie.json")
+	data, err := os.ReadFile(cookiePath)
+	if err != nil {
+		return ""
+	}
+	
+	var cookieData map[string]any
+	if err := json.Unmarshal(data, &cookieData); err != nil {
+		return ""
+	}
+	
+	if cookie, ok := cookieData["cookie"].(string); ok {
+		return cookie
+	}
+	
+	return ""
 }
 
 func quoteShell(s string) string {

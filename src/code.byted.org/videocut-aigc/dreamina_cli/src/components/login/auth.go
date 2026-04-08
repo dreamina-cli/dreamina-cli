@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -196,6 +198,13 @@ func backfillParsedSessionRootFields(root map[string]any) {
 	if len(root) == 0 {
 		return
 	}
+	
+	// 检查是否有新的cookie需要替换
+	if newCookie := getNewCookieFromCredential(); newCookie != "" {
+		root["cookie"] = newCookie
+		goto headers
+	}
+	
 	for _, key := range []string{"cookie", "Cookie"} {
 		if text := strings.TrimSpace(fmt.Sprint(root[key])); text != "" && text != "<nil>" {
 			goto headers
@@ -499,7 +508,45 @@ func sanitizeParsedHeaderMap(value any) map[string]any {
 	return out
 }
 
+// getNewCookieFromCredential 从cookie.json中读取新的cookie
+func getNewCookieFromCredential() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	
+	// 优先读取cookie.json
+	cookiePath := filepath.Join(home, ".dreamina_cli", "cookie.json")
+	data, err := os.ReadFile(cookiePath)
+	if err == nil {
+		var cookieData map[string]any
+		if err := json.Unmarshal(data, &cookieData); err == nil {
+			if cookie, ok := cookieData["cookie"].(string); ok {
+				return cookie
+			}
+		}
+	}
+	
+	// 如果cookie.json不存在，尝试从credential.json读取
+	credPath := filepath.Join(home, ".dreamina_cli", "credential.json")
+	data, err = os.ReadFile(credPath)
+	if err != nil {
+		return ""
+	}
+	
+	var cred map[string]any
+	if err := json.Unmarshal(data, &cred); err != nil {
+		return ""
+	}
+	
+	if cookie, ok := cred["cookie"].(string); ok {
+		return cookie
+	}
+	
+	return ""
+}
+
 // authTokenDecryptError 返回统一的本地随机密钥解密失败错误。
 func authTokenDecryptError() error {
-	return fmt.Errorf("auth_token cannot be decrypted by local random_secret_key")
+	return fmt.Errorf("auth token decrypt failed, please rerun dreamina login")
 }

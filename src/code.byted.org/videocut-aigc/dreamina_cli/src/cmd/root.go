@@ -47,6 +47,7 @@ func NewRootCommand() *Command {
 		newLoginCommand(nil),
 		newReloginCommand(nil),
 		newImportLoginResponseCommand(nil),
+		newSetCookieCommand(nil),
 		newQueryResultCommand(nil),
 		newListTaskCommand(nil),
 		newUserCreditCommand(nil),
