@@ -1,0 +1,127 @@
+# /Users/awei/.local/bin/dreamina 的 updater 实现分析
+
+本文基于二进制 `/Users/awei/.local/bin/dreamina` 的反汇编与字符串分析，整理 `components/updater` 的真实行为与关键常量。所有结论均为静态分析所得，未进行动态网络探测。
+
+## 关键结论
+
+- updater 在 `main.main` 中被固定触发：启动时先 `CheckUpdateAsync()`，命令执行完成后再 `PrintUpdateResult()`，且 `PrintUpdateResult()` 为非阻塞读取。
+- 远端版本拉取使用 `version.json`，本地缓存路径高置信度为 `~/.dreamina_cli/version.json`（由 `os.UserHomeDir` + `filepath.Join` 组装）。
+- 版本缓存节流窗口为 **1 小时**（`time.Since(modtime) < 3600000000000ns`）。
+- 远端探测带 30 秒超时（`context.WithTimeout(..., 30s)`）。
+- 只有当 CDN `GetCurrentDir()` 的结果中包含 `version.json` 时才继续远端请求。
+- 更新提示文案已内置：`[Update Available] A new version %s is available (current: %s).`
+- 若无更新，会输出 `local [%v] is the latest version, pass`。
+
+## 触发链路（主流程）
+
+从 `main.main` 可见调用顺序：
+
+1. 启动即调用 `components/updater.CheckUpdateAsync()`，以 goroutine 异步执行。
+2. CLI 主命令执行完成后，调用 `components/updater.PrintUpdateResult()`。
+3. `PrintUpdateResult()` 使用 `selectnbrecv` 非阻塞读取 `UpdateResultChan`，没有结果就直接返回。
+
+结论：update 逻辑不会阻塞主命令，仅在主命令结束后尝试打印结果。
+
+## UpdateResultChan 初始化
+
+`components/updater.init` 中调用 `runtime.makechan` 初始化 `UpdateResultChan`，容量为 1。
+
+## CheckUpdateAsync 细节
+
+### 超时
+
+`context.WithTimeout(ctx, 30s)`，常量值为 `30000000000ns`。
+
+### 本地版本与节流
+
+`getLocalVersion()` 会从本地缓存读取版本信息；如果本地 `version.json` 不存在，会尝试远端拉取后写入本地再读。
+
+`CheckUpdateAsync` 随后调用 `os.Stat(localVersionFile)` 并检查 `time.Since(modtime)`。
+
+- 若 `Since < 1h` 则直接退出，不做远端请求。
+- 该 1 小时阈值来源于 `3600000000000ns` 常量。
+
+### CDN 探测门禁
+
+调用 `cdn-uploadx-go-sdk.(*DeliverClient).GetCurrentDir`，并对返回的目录字符串做 `bytes.Index` 检查。
+
+门禁串被解出为 `version.json`（字节序列 `version.` + `json`），即：
+
+- `bytes.Index(currentDir, []byte("version.json")) != -1` 才继续远端请求
+
+## 远端版本获取
+
+### URL 构造（高置信度推断）
+
+`downloadJSONFromCDN` 使用 `fmt.Sprintf`，格式串长度为 5，极大概率为：
+
+```go
+fmt.Sprintf("%s/%s", base, "version.json")
+```
+
+推断依据：
+
+- 参与 `fmt.Sprintf` 的参数有 2 个字符串
+- 5 字符长度最匹配 `%s/%s`
+- 二进制中存在 `version.json` 字面量
+- 二进制中存在 CDN 基础地址字符串：
+  - `https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp`
+
+因此推断：最终 URL 为 `base + "/version.json"`。
+
+### HTTP 请求行为
+
+`downloadJSONFromCDN` 执行流程：
+
+1. `http.NewRequestWithContext(ctx, "GET", url, nil)`
+2. 使用默认 `http.Client` 执行
+3. 若 `StatusCode != 200` 报错
+4. `io.ReadAll(resp.Body)` 读返回体
+
+### JSON 解析
+
+`fetchLatestVersionFromCDN` 中将响应体 `json.Unmarshal` 到 `VersionInfo`。
+解析失败时返回错误：
+
+`parse remote version.json failed: %w`
+
+## 本地缓存路径与格式
+
+`getLocalVersionFilePath()`：
+
+- 调用 `os.UserHomeDir()`，失败则直接返回文件名 `version.json`
+- 成功则 `filepath.Join(home, <13 字节目录名>, "version.json")`
+
+结合路径长度与惯例，高置信度推断该目录名为 `.dreamina_cli`。因此本地缓存文件为：
+
+`~/.dreamina_cli/version.json`
+
+## PrintUpdateResult 输出行为
+
+`PrintUpdateResult()`：
+
+- 非阻塞读取 `UpdateResultChan`，无结果直接返回
+- 若 `UpdateResult.Error != nil` 会输出错误
+- 若 `HasUpdate == true` 输出：
+  - `[Update Available] A new version %s is available (current: %s).`
+- 若 `HasUpdate == false` 输出：
+  - `local [%v] is the latest version, pass`
+- 最后调用 `os.Chtimes(localVersionFile, now, now)` 更新本地 `version.json` 的 mtime，作为 1 小时节流窗口的基准
+
+## UpdateResult 结构字段（反汇编推断）
+
+从 `PrintUpdateResult` 的字段访问顺序推断结构体包含：
+
+- `HasUpdate`（bool）
+- `RemoteVersion`（string）
+- `CurrentVersion`（string）
+- `Description` 或备注字段（string，可选）
+- `Error`（error）
+
+该推断用于理解输出逻辑，字段命名以源码为准。
+
+## 备注：与旧结论的修正
+
+先前版本分析曾误写节流窗口为 24 小时。此次重新校验后确认：
+
+`time.Since(modtime) < 1 小时` 才会跳过远端探测。
