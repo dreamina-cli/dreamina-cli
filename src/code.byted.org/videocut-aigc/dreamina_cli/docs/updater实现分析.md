@@ -112,17 +112,34 @@ https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp/v
   - `local [%v] is the latest version, pass`
 - 最后调用 `os.Chtimes(localVersionFile, now, now)` 更新本地 `version.json` 的 mtime，作为 1 小时节流窗口的基准
 
-## UpdateResult 结构字段（反汇编推断）
+## UpdateResult 与 VersionInfo 结构字段（反汇编推断）
 
-从 `PrintUpdateResult` 的字段访问顺序推断结构体包含：
+从 `type:.eq` 自动生成的比较函数可推断字段布局：
+
+### VersionInfo
+
+`type:.eq...VersionInfo` 依次比较 3 组 `string`（每组 16 字节），因此：
+
+- `VersionInfo` 包含 **3 个 string 字段**（顺序未知）
+
+### UpdateResult
+
+`type:.eq...UpdateResult` 的比较顺序为：
+
+1. 起始 1 字节 `bool`（`HasUpdate`）
+2. 紧跟一个 `VersionInfo`（3 个 string 字段）
+3. 再比较 2 个 `string` 字段
+
+结合 `PrintUpdateResult` 对 `offset=80` 的 `len` 判断，可知最后一个 `string` 用作“可选输出信息”（可能是描述、提示或错误文本）。
+
+因此 `UpdateResult` 高置信度结构为：
 
 - `HasUpdate`（bool）
-- `RemoteVersion`（string）
+- `RemoteVersion`（VersionInfo，含 3 个 string 字段）
 - `CurrentVersion`（string）
-- `Description` 或备注字段（string，可选）
-- `Error`（error）
+- `Message`（string，非空则输出）
 
-该推断用于理解输出逻辑，字段命名以源码为准。
+字段命名以源码为准，此处仅用于解释打印逻辑。
 
 ## 备注：与旧结论的修正
 
