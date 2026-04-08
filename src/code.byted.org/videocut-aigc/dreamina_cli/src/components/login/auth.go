@@ -5,7 +5,6 @@ import (
 	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/md5"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -17,9 +16,7 @@ import (
 )
 
 func ParseAuthToken(authToken string, randomSecretKey string) (any, error) {
-	// 原始二进制这里是严格的单一路径：
-	// base64 -> sha256(random_secret_key) -> AES-CBC(key[:16] 作为 IV) -> PKCS7 -> JSON。
-	// 之前实现里保留过直读 JSON 和 loose 文本兜底，但这和反汇编不符，继续保留会掩盖真实凭证错误。
+	// cookie 分支仅保留签名校验，不再做本地解密。
 	authToken = strings.TrimSpace(authToken)
 	randomSecretKey = strings.TrimSpace(randomSecretKey)
 	if authToken == "" {
@@ -28,26 +25,7 @@ func ParseAuthToken(authToken string, randomSecretKey string) (any, error) {
 	if randomSecretKey == "" {
 		return nil, fmt.Errorf("random_secret_key is missing locally, please rerun dreamina login")
 	}
-
-	decoded, err := base64.StdEncoding.DecodeString(authToken)
-	if err != nil {
-		return nil, err
-	}
-
-	key := sha256.Sum256([]byte(randomSecretKey))
-	plain, err := decryptAESCBC(decoded, key[:], key[:aes.BlockSize])
-	if err != nil {
-		return nil, authTokenDecryptError()
-	}
-	unpadded, err := pkcs7Unpad(plain, aes.BlockSize)
-	if err != nil {
-		return nil, authTokenDecryptError()
-	}
-	payload, err := parseSessionPayloadBytes(unpadded)
-	if err != nil {
-		return nil, authTokenDecryptError()
-	}
-	return payload, nil
+	return nil, authTokenDecryptError()
 }
 
 // verifyAuthTokenSignature 校验 auth_token 的签名是否与内置公钥和 md5 摘要匹配。
@@ -198,13 +176,13 @@ func backfillParsedSessionRootFields(root map[string]any) {
 	if len(root) == 0 {
 		return
 	}
-	
+
 	// 检查是否有新的cookie需要替换
 	if newCookie := getNewCookieFromCredential(); newCookie != "" {
 		root["cookie"] = newCookie
 		goto headers
 	}
-	
+
 	for _, key := range []string{"cookie", "Cookie"} {
 		if text := strings.TrimSpace(fmt.Sprint(root[key])); text != "" && text != "<nil>" {
 			goto headers
@@ -514,7 +492,7 @@ func getNewCookieFromCredential() string {
 	if err != nil {
 		return ""
 	}
-	
+
 	// 优先读取cookie.json
 	cookiePath := filepath.Join(home, ".dreamina_cli", "cookie.json")
 	data, err := os.ReadFile(cookiePath)
@@ -526,23 +504,23 @@ func getNewCookieFromCredential() string {
 			}
 		}
 	}
-	
+
 	// 如果cookie.json不存在，尝试从credential.json读取
 	credPath := filepath.Join(home, ".dreamina_cli", "credential.json")
 	data, err = os.ReadFile(credPath)
 	if err != nil {
 		return ""
 	}
-	
+
 	var cred map[string]any
 	if err := json.Unmarshal(data, &cred); err != nil {
 		return ""
 	}
-	
+
 	if cookie, ok := cred["cookie"].(string); ok {
 		return cookie
 	}
-	
+
 	return ""
 }
 

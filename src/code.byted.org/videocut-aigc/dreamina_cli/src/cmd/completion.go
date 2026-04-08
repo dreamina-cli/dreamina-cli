@@ -164,20 +164,6 @@ func completionFlagsForCommand(use string) []completionEntry {
 			{Value: "--help", Description: "help for help"},
 			{Value: "-h", Description: "help for help"},
 		}
-	case "login":
-		return []completionEntry{
-			{Value: "--debug", Description: "show manual-import details plus extra callback troubleshooting output"},
-			{Value: "--headless", Description: "headless Google Chrome (install google-chrome); load the login page and render the QR code in the terminal"},
-			{Value: "--help", Description: "help for login"},
-			{Value: "-h", Description: "help for login"},
-		}
-	case "relogin":
-		return []completionEntry{
-			{Value: "--debug", Description: "show manual-import details plus extra callback troubleshooting output"},
-			{Value: "--headless", Description: "headless Google Chrome (install google-chrome); load the login page and render the QR code in the terminal"},
-			{Value: "--help", Description: "help for relogin"},
-			{Value: "-h", Description: "help for relogin"},
-		}
 	case "import_login_response":
 		return []completionEntry{
 			{Value: "--file", Description: "read the copied login JSON from a file instead of stdin"},
@@ -200,11 +186,6 @@ func completionFlagsForCommand(use string) []completionEntry {
 			{Value: "--limit", Description: "max number of tasks to return"},
 			{Value: "--offset", Description: "offset for pagination"},
 			{Value: "--submit_id", Description: "filter by submit_id"},
-		}
-	case "logout":
-		return []completionEntry{
-			{Value: "--help", Description: "help for logout"},
-			{Value: "-h", Description: "help for logout"},
 		}
 	case "user_credit":
 		return []completionEntry{

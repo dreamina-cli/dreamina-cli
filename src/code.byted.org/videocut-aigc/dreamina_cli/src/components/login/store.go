@@ -350,23 +350,23 @@ func (m *Manager) HasUsableCredential() bool {
 func (m *Manager) RequireUsableCredential() error {
 	// 要求当前必须有可用凭证，否则返回面向用户的登录提示。
 	if _, err := m.loadUsableCredential(); err != nil {
-		return fmt.Errorf("未检测到有效登录态，请先执行 dreamina login")
+		return fmt.Errorf("未检测到有效 cookie 会话，请先准备 ~/.dreamina_cli/cookie.json")
 	}
 	return nil
 }
 
 func (m *Manager) LoadUsableSession() (any, error) {
-	// 优先读取 cookie.json；只有 cookie 会话不可用时，才回退到 credential.json 解析 auth_token。
+	// 优先读取 cookie.json；cookie 会话不可用时直接报错。
 	if payload, err := m.LoadCookieSession(); err == nil {
 		return payload, nil
 	}
-	return m.ParseAuthToken()
+	return nil, fmt.Errorf("未检测到有效 cookie 会话，请先准备 ~/.dreamina_cli/cookie.json")
 }
 
 func (m *Manager) RequireUsableSession() error {
 	// 只要本地存在可用 cookie 会话或 credential 登录态，就视为已经登录。
 	if _, err := m.LoadUsableSession(); err != nil {
-		return fmt.Errorf("未检测到有效登录态，请先执行 dreamina login")
+		return fmt.Errorf("未检测到有效 cookie 会话，请先准备 ~/.dreamina_cli/cookie.json")
 	}
 	return nil
 }
@@ -448,14 +448,6 @@ func (m *Manager) ImportLoginResponseJSON(v ...any) error {
 	cred.SignKeyPairName = strings.TrimSpace(fields.SignKeyPairName)
 	cred.RandomSecretKey = secretKey
 
-	sessionPayload, err := ParseAuthToken(cred.AuthToken, cred.RandomSecretKey)
-	if err != nil {
-		return fmt.Errorf("invalid auth token: %w", err)
-	}
-	if !hasUsableSessionPayload(sessionPayload) {
-		return fmt.Errorf("invalid auth token: parsed session payload is unusable")
-	}
-
 	if err := m.saveCredential(cred); err != nil {
 		return fmt.Errorf("save credential: %w", err)
 	}
@@ -497,31 +489,13 @@ func (m *Manager) prepareLoginSecretKey() (string, error) {
 }
 
 func (m *Manager) loadUsableCredential() (*Credential, error) {
-	// 读取凭证后会同时校验签名、解密 token，并确保会话内容可被后续链路使用。
+	// cookie 分支不再解密 auth_token，仅确保凭证结构可被读取。
 	cred, err := m.loadCredential()
 	if err != nil {
 		return nil, err
 	}
-	switch {
-	case strings.TrimSpace(cred.AuthToken) == "":
-		return nil, fmt.Errorf("auth_token is required")
-	case strings.TrimSpace(cred.RandomSecretKey) == "":
-		return nil, fmt.Errorf("random_secret_key is missing locally, please rerun dreamina login")
-	case strings.TrimSpace(cred.AutoTokenMD5Sign) == "":
-		return nil, fmt.Errorf("auto_token_md5_sign is required")
-	case strings.TrimSpace(cred.SignKeyPairName) == "":
-		return nil, fmt.Errorf("sign_key_pair_name is required")
-	}
-
-	if err := verifyAuthTokenSignature(cred.AuthToken, cred.AutoTokenMD5Sign, cred.SignKeyPairName); err != nil {
-		return nil, err
-	}
-	payload, err := ParseAuthToken(cred.AuthToken, cred.RandomSecretKey)
-	if err != nil {
-		return nil, err
-	}
-	if !hasUsableSessionPayload(payload) {
-		return nil, fmt.Errorf("parsed auth token payload is unusable")
+	if cred == nil {
+		return nil, fmt.Errorf("credential is required")
 	}
 	return cred, nil
 }
@@ -782,39 +756,17 @@ func firstCredential(v ...any) (*Credential, bool) {
 }
 
 func (m *Manager) resolveImportedSecretKey(cred *Credential, fields importCredentialFields) (string, error) {
-	candidates := []string{
-		strings.TrimSpace(cred.RandomSecretKey),
-		strings.TrimSpace(fields.RandomSecretKey),
-	}
-	if strings.TrimSpace(cred.RandomSecretKey) == "" && strings.TrimSpace(fields.RandomSecretKey) == "" {
-		secretKey, err := m.prepareLoginSecretKey()
-		if err != nil {
-			return "", err
-		}
-		candidates = append(candidates, strings.TrimSpace(secretKey))
-	}
-	seen := map[string]struct{}{}
-	for _, candidate := range candidates {
-		candidate = strings.TrimSpace(candidate)
-		if candidate == "" {
-			continue
-		}
-		if _, ok := seen[candidate]; ok {
-			continue
-		}
-		seen[candidate] = struct{}{}
-		payload, err := ParseAuthToken(strings.TrimSpace(fields.AuthToken), candidate)
-		if err == nil && hasUsableSessionPayload(payload) {
-			return candidate, nil
-		}
-	}
 	if text := strings.TrimSpace(fields.RandomSecretKey); text != "" {
 		return text, nil
 	}
 	if text := strings.TrimSpace(cred.RandomSecretKey); text != "" {
 		return text, nil
 	}
-	return "", nil
+	secretKey, err := m.prepareLoginSecretKey()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(secretKey), nil
 }
 
 func hasUsableSessionPayload(payload any) bool {

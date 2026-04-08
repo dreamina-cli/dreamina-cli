@@ -11,7 +11,7 @@ func TestImportLoginResponseJSONRequiresSignatureFields(t *testing.T) {
 	t.Helper()
 
 	mgr := newURLTestLoginManager(t)
-	authToken := encryptAuthTokenForTest(t, []byte(`{"cookie":"sid=test","headers":{"User-Agent":"ua-test"}}`), "secret-key")
+	authToken := "token"
 	body, err := json.Marshal(map[string]any{
 		"auth_token": authToken,
 	})
@@ -57,7 +57,7 @@ func TestImportLoginResponseJSONUsesLocallyPreparedSecretKey(t *testing.T) {
 		t.Fatalf("seed credential: %v", err)
 	}
 
-	authToken := encryptAuthTokenForTest(t, []byte(`{"cookie":"sid=test","headers":{"User-Agent":"ua-test"}}`), "secret-key")
+	authToken := "token"
 	body, err := json.Marshal(map[string]any{
 		"ret":                 "0",
 		"msg":                 "success",

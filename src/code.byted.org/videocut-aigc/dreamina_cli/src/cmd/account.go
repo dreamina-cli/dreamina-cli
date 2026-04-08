@@ -3,13 +3,11 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	appctx "code.byted.org/videocut-aigc/dreamina_cli/app"
 	commerceclient "code.byted.org/videocut-aigc/dreamina_cli/components/client/dreamina/commerce"
 	"code.byted.org/videocut-aigc/dreamina_cli/components/login"
-	"code.byted.org/videocut-aigc/dreamina_cli/config"
 )
 
 // 该文件收敛账号相关命令入口。
@@ -73,41 +71,6 @@ func buildUserCreditOutput(credit *commerceclient.UserCredit) *originalUserCredi
 	}
 }
 
-// newLogoutCommand 创建清理本地登录态的命令入口。
-func newLogoutCommand(app any) *Command {
-	// logout 命令会清理本地登录态，并输出是否真的移除了可用凭证。
-	return &Command{
-		Use: "logout",
-		RunE: func(cmd *Command, args []string) error {
-			if err := rejectUnexpectedCommandArgs("logout", args); err != nil {
-				return err
-			}
-			cfg, err := config.Load()
-			if err != nil {
-				return err
-			}
-			if _, err := os.Stat(cfg.CredentialPath); err != nil && !os.IsNotExist(err) {
-				return err
-			}
-
-			svc, err := login.NewService()
-			if err != nil {
-				return err
-			}
-			hadUsableCredential := svc.RequireUsableCredential() == nil
-			if err := svc.Logout(); err != nil {
-				return err
-			}
-			if hadUsableCredential {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "已清除本地登录态。")
-				return nil
-			}
-			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "当前没有本地登录态。")
-			return nil
-		},
-	}
-}
-
 // newValidateAuthCommand 创建校验当前 auth token 并输出整理后会话信息的命令入口。
 func newValidateAuthCommand(app any) *Command {
 	// validate-auth-token 按原程序行为只解析本地 auth_token，并输出整理后的会话信息。
@@ -125,7 +88,7 @@ func newValidateAuthCommand(app any) *Command {
 			if !ok {
 				return fmt.Errorf("login service is not configured")
 			}
-			payload, err := svc.ParseAuthToken()
+			payload, err := svc.LoadCookieSession()
 			if err != nil {
 				return err
 			}

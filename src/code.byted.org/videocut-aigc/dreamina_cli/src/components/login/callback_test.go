@@ -54,7 +54,7 @@ func TestCallbackHandlerPostSavesCredential(t *testing.T) {
 	t.Helper()
 
 	mgr := newTestLoginManager(t)
-	authToken := encryptAuthTokenForTest(t, []byte(`{"cookie":"sid=test","headers":{"User-Agent":"ua-test"}}`), "secret-key")
+	authToken := "token"
 	body, err := json.Marshal(map[string]any{
 		"auth_token":          authToken,
 		"auto_token_md5_sign": "dummy-signature",

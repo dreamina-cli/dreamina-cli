@@ -92,16 +92,6 @@ func TestCompleteCommandAlignedForRootAndFlags(t *testing.T) {
 			},
 		},
 		{
-			args: []string{"__complete", "login", "--"},
-			contains: []string{
-				"--version\tprint build version information",
-				"--debug\tshow manual-import details plus extra callback troubleshooting output",
-				"--headless\theadless Google Chrome (install google-chrome); load the login page and render the QR code in the terminal",
-				"--help\thelp for login",
-				":4",
-			},
-		},
-		{
 			args: []string{"__complete", "completion", "p"},
 			contains: []string{
 				"powershell\tGenerate the autocompletion script for powershell",

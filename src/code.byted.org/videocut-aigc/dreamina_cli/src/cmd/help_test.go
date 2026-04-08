@@ -35,6 +35,9 @@ func TestRootHelpShownForNoArgs(t *testing.T) {
 	if strings.Contains(text, "ref2video") {
 		t.Fatalf("did not expect alias ref2video in root help: %q", text)
 	}
+	if strings.Contains(text, "relogin") || strings.Contains(text, "logout") {
+		t.Fatalf("did not expect login/logout commands in root help: %q", text)
+	}
 }
 
 func TestRootHelpShownForHelpFlag(t *testing.T) {
@@ -53,31 +56,6 @@ func TestRootHelpShownForHelpFlag(t *testing.T) {
 	text := out.String()
 	if !strings.Contains(text, "Usage:\n  dreamina [flags]") {
 		t.Fatalf("unexpected root help output: %q", text)
-	}
-}
-
-func TestLoginHelpShownForHelpFlag(t *testing.T) {
-	t.Helper()
-
-	root := NewRootCommand()
-	var out bytes.Buffer
-	root.out = &out
-	root.SetArgs([]string{"login", "-h"})
-
-	_, err := root.ExecuteC()
-	if err != nil {
-		t.Fatalf("ExecuteC failed: %v", err)
-	}
-
-	text := out.String()
-	if !strings.Contains(text, "Usage:\n  dreamina login [flags]") {
-		t.Fatalf("unexpected login help output: %q", text)
-	}
-	if !strings.Contains(text, "Flags:") || !strings.Contains(text, "--headless") {
-		t.Fatalf("expected login flags in help output: %q", text)
-	}
-	if !strings.Contains(text, "Examples:") || !strings.Contains(text, "dreamina login --headless") {
-		t.Fatalf("expected login examples in help output: %q", text)
 	}
 }
 

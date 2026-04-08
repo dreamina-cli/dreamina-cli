@@ -12,93 +12,6 @@ import (
 	mcpclient "code.byted.org/videocut-aigc/dreamina_cli/components/client/dreamina/mcp"
 )
 
-func TestLogoutCommandWithoutCredentialMatchesOriginalMessage(t *testing.T) {
-	t.Helper()
-
-	cfgDir := filepath.Join(t.TempDir(), ".dreamina_cli")
-	t.Setenv("DREAMINA_CONFIG_DIR", cfgDir)
-
-	root := NewRootCommand()
-	var out bytes.Buffer
-	root.out = &out
-	root.SetArgs([]string{"logout"})
-
-	if _, err := root.ExecuteC(); err != nil {
-		t.Fatalf("ExecuteC failed: %v", err)
-	}
-	if got := out.String(); got != "当前没有本地登录态。\n" {
-		t.Fatalf("unexpected logout output: %q", got)
-	}
-}
-
-func TestLogoutCommandWithMalformedCredentialMatchesOriginalMessage(t *testing.T) {
-	t.Helper()
-
-	cfgDir := filepath.Join(t.TempDir(), ".dreamina_cli")
-	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
-		t.Fatalf("mkdir cfg dir: %v", err)
-	}
-	credentialPath := filepath.Join(cfgDir, "credential.json")
-	if err := os.WriteFile(credentialPath, []byte("not-json\n"), 0o600); err != nil {
-		t.Fatalf("write malformed credential: %v", err)
-	}
-	t.Setenv("DREAMINA_CONFIG_DIR", cfgDir)
-
-	root := NewRootCommand()
-	var out bytes.Buffer
-	root.out = &out
-	root.SetArgs([]string{"logout"})
-
-	if _, err := root.ExecuteC(); err != nil {
-		t.Fatalf("ExecuteC failed: %v", err)
-	}
-	if got := out.String(); got != "当前没有本地登录态。\n" {
-		t.Fatalf("unexpected logout output: %q", got)
-	}
-	if _, err := os.Stat(credentialPath); !os.IsNotExist(err) {
-		t.Fatalf("expected credential to be removed, stat err=%v", err)
-	}
-	if strings.Contains(out.String(), "已清除本地登录态") {
-		t.Fatalf("unexpected cleared-state message: %q", out.String())
-	}
-}
-
-func TestUserCreditCommandRequiresLoginWithOriginalMessage(t *testing.T) {
-	t.Helper()
-
-	cfgDir := filepath.Join(t.TempDir(), ".dreamina_cli")
-	t.Setenv("DREAMINA_CONFIG_DIR", cfgDir)
-
-	root := NewRootCommand()
-	root.SetArgs([]string{"user_credit"})
-
-	_, err := root.ExecuteC()
-	if err == nil {
-		t.Fatalf("expected login-required error")
-	}
-	if got := err.Error(); got != "未检测到有效登录态，请先执行 dreamina login" {
-		t.Fatalf("unexpected user_credit error: %q", got)
-	}
-}
-
-func TestListTaskCommandRequiresLoginWithOriginalMessage(t *testing.T) {
-	t.Helper()
-
-	cfgDir := filepath.Join(t.TempDir(), ".dreamina_cli")
-	t.Setenv("DREAMINA_CONFIG_DIR", cfgDir)
-
-	root := NewRootCommand()
-	root.SetArgs([]string{"list_task"})
-
-	_, err := root.ExecuteC()
-	if err == nil {
-		t.Fatalf("expected login-required error")
-	}
-	if got := err.Error(); got != "未检测到有效登录态，请先执行 dreamina login" {
-		t.Fatalf("unexpected list_task error: %q", got)
-	}
-}
-
 func TestListTaskCommandUsesCookieSessionWithoutCredential(t *testing.T) {
 	t.Helper()
 
@@ -199,7 +112,6 @@ func TestAccountCommandsRejectUnknownFlagBeforeExecution(t *testing.T) {
 
 	for _, args := range [][]string{
 		{"user_credit", "--badflag"},
-		{"logout", "--badflag"},
 		{"validate-auth-token", "--badflag"},
 		{"import_login_response", "--badflag"},
 	} {
@@ -228,7 +140,6 @@ func TestCommandsRejectUnexpectedPositionalArgs(t *testing.T) {
 	}{
 		{args: []string{"version", "foo"}, want: `unknown command "foo" for "dreamina version"`},
 		{args: []string{"user_credit", "foo"}, want: `unknown command "foo" for "dreamina user_credit"`},
-		{args: []string{"logout", "foo"}, want: `unknown command "foo" for "dreamina logout"`},
 		{args: []string{"validate-auth-token", "foo"}, want: `unknown command "foo" for "dreamina validate-auth-token"`},
 		{args: []string{"query_result", "foo"}, want: `unknown command "foo" for "dreamina query_result"`},
 		{args: []string{"list_task", "foo"}, want: `unknown command "foo" for "dreamina list_task"`},
@@ -455,7 +366,7 @@ func TestMultimodal2VideoRequiresLoginBeforeInputValidation(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected login-required error")
 	}
-	if got := err.Error(); got != "未检测到有效登录态，请先执行 dreamina login" {
+	if got := err.Error(); got != "未检测到有效 cookie 会话，请先准备 ~/.dreamina_cli/cookie.json" {
 		t.Fatalf("unexpected multimodal2video error: %q", got)
 	}
 }

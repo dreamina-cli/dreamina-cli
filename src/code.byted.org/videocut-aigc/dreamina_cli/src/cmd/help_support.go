@@ -29,10 +29,8 @@ var rootBuiltInHelpRows = []helpRow{
 	{Name: "help", Description: "Help about any command"},
 	{Name: "import_login_response", Description: "Import a copied dreamina_cli_login JSON response into the local credential store"},
 	{Name: "list_task", Description: "List saved tasks with status and result summary"},
-	{Name: "login", Description: "Log in locally before using task and account commands; use --headless for agent or remote login"},
-	{Name: "logout", Description: "Clear the local login session"},
 	{Name: "query_result", Description: "Query the current result of an async generation task"},
-	{Name: "relogin", Description: "Clear the local login session and force a fresh login; use --headless for agent or remote login"},
+	{Name: "set_cookie", Description: "Save a cookie session into the local cookie store"},
 	{Name: "user_credit", Description: "Show the current user's remaining credit balance"},
 	{Name: "version", Description: "Print build version and commit information"},
 }
@@ -78,59 +76,6 @@ Flags:
 
 Global Flags:
       --version   print build version information
-`,
-	},
-	"login": {
-		Raw: `Usage:
-  dreamina login [flags]
-
-Reuse the current local login session when it is still valid; otherwise open the browser and continue login.
-When an AI or agent invokes login, prefer --headless first rather than the default local callback browser flow.
-Use --headless to keep the login page inside a headless browser and render the intercepted Douyin QR code in the terminal.
-Agents automating login in headless or remote environments should have the user install Google Chrome first (Linux: google-chrome or google-chrome-stable; the binary must be available as google-chrome), because --headless drives headless Chrome.
-The CLI will wait until the local credential is saved successfully.
-If the current machine cannot open a browser, follow the printed manual import steps and then use dreamina import_login_response to save the copied login JSON.
-For that JSON, paste the full body in a local terminal or use --file with a saved JSON file; pasting long JSON in chat channels often truncates the payload.
-
-
-Flags:
-      --debug      show manual-import details plus extra callback troubleshooting output
-      --headless   headless Google Chrome (install google-chrome); load the login page and render the QR code in the terminal
-  -h, --help       help for login
-
-Global Flags:
-      --version   print build version information
-
-Examples:
-  dreamina login
-  dreamina login --headless
-  dreamina login --debug
-`,
-	},
-	"relogin": {
-		Raw: `Usage:
-  dreamina relogin [flags]
-
-Remove the local login credential first, then force the browser login flow.
-When an AI or agent invokes relogin, prefer --headless first rather than the default local callback browser flow.
-Use --headless to keep the login page inside a headless browser and render the intercepted Douyin QR code in the terminal.
-Agents automating relogin in headless or remote environments should have the user install Google Chrome first (Linux: google-chrome or google-chrome-stable; the binary must be available as google-chrome), because --headless drives headless Chrome.
-If the current machine cannot open a browser, follow the printed manual import steps and then use dreamina import_login_response to save the copied login JSON.
-For that JSON, paste the full body in a local terminal or use --file with a saved JSON file; pasting long JSON in chat channels often truncates the payload.
-
-
-Flags:
-      --debug      show manual-import details plus extra callback troubleshooting output
-      --headless   headless Google Chrome (install google-chrome); load the login page and render the QR code in the terminal
-  -h, --help       help for relogin
-
-Global Flags:
-      --version   print build version information
-
-Examples:
-  dreamina relogin
-  dreamina relogin --headless
-  dreamina relogin --debug
 `,
 	},
 	"text2image": {
@@ -509,21 +454,23 @@ Examples:
   dreamina list_task --gen_status=success
 `,
 	},
-	"logout": {
+	"set_cookie": {
 		Raw: `Usage:
-  dreamina logout [flags]
+  dreamina set_cookie [flags]
 
-Remove the local login credential without touching tasks or config.
+Save a cookie session into the local cookie store.
 
 
 Flags:
-  -h, --help   help for logout
+      --cookie string   raw cookie string from the browser
+      --uid string      uid to associate with the cookie session
+  -h, --help            help for set_cookie
 
 Global Flags:
       --version   print build version information
 
 Examples:
-  dreamina logout
+  dreamina set_cookie --cookie="sid=xxx" --uid=123
 `,
 	},
 	"user_credit": {
@@ -669,21 +616,20 @@ func writeRootHelp(out io.Writer) error {
 	_, _ = fmt.Fprintln(out, "Usage:")
 	_, _ = fmt.Fprintln(out, "  dreamina [flags]")
 	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out, "即梦 official AIGC CLI tool for login, account, and generation workflows")
+	_, _ = fmt.Fprintln(out, "即梦 official AIGC CLI tool for account and generation workflows")
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "About:")
 	_, _ = fmt.Fprintln(out, "  dreamina is the 即梦 official AIGC CLI tool.")
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "Quick start:")
-	_, _ = fmt.Fprintln(out, `  1. Run "dreamina login" to save a local login session.`)
+	_, _ = fmt.Fprintln(out, `  1. Run "dreamina set_cookie --cookie=... --uid=..." to save a cookie session.`)
 	_, _ = fmt.Fprintln(out, `  2. Run a generator command such as "dreamina text2image --prompt=\"a cat portrait\"".`)
 	_, _ = fmt.Fprintln(out, `  3. Use "dreamina query_result --submit_id=<id>" for async tasks, or "dreamina list_task" to review saved tasks.`)
 	_, _ = fmt.Fprintln(out, `  4. Use "dreamina user_credit" to check the current account credit balance.`)
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "Tips:")
 	_, _ = fmt.Fprintln(out, `  Run "dreamina <subcommand> -h" to view detailed help for any subcommand.`)
-	_, _ = fmt.Fprintln(out, `  When an AI or agent drives login, prefer "dreamina login --headless" (or "dreamina relogin --headless") over the default browser callback flow; have the user install Google Chrome (google-chrome / google-chrome-stable on Linux) first.`)
-	_, _ = fmt.Fprintln(out, `  When sharing the manual-import login JSON with an agent, paste the full JSON in a local terminal or send a JSON file; long pastes in chat channels are often truncated.`)
+	_, _ = fmt.Fprintln(out, `  Use "dreamina import_login_response" only when you already have the login JSON response body.`)
 	_, _ = fmt.Fprintln(out, "  All generation operations consume credits.")
 	_, _ = fmt.Fprintln(out, "  Seedance 2.0 family is a flagship video generation model family and is a strong choice when output quality matters most.")
 	_, _ = fmt.Fprintln(out)
@@ -700,10 +646,7 @@ func writeRootHelp(out io.Writer) error {
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "Examples:")
-	_, _ = fmt.Fprintln(out, "  dreamina login")
-	_, _ = fmt.Fprintln(out, "  dreamina login --headless")
-	_, _ = fmt.Fprintln(out, "  dreamina logout")
-	_, _ = fmt.Fprintln(out, "  dreamina relogin")
+	_, _ = fmt.Fprintln(out, "  dreamina set_cookie --cookie=\"sid=xxx\" --uid=123")
 	_, _ = fmt.Fprintln(out, "  dreamina user_credit")
 	_, _ = fmt.Fprintln(out, "  dreamina list_task --gen_status=success")
 	_, _ = fmt.Fprintln(out, "  dreamina query_result --submit_id=3f6eb41f425d23a3")
@@ -723,10 +666,7 @@ func writeUnknownHelpTopic(out io.Writer, name string) error {
 	_, _ = fmt.Fprintln(out, "  dreamina [command]")
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "Examples:")
-	_, _ = fmt.Fprintln(out, "  dreamina login")
-	_, _ = fmt.Fprintln(out, "  dreamina login --headless")
-	_, _ = fmt.Fprintln(out, "  dreamina logout")
-	_, _ = fmt.Fprintln(out, "  dreamina relogin")
+	_, _ = fmt.Fprintln(out, "  dreamina set_cookie --cookie=\"sid=xxx\" --uid=123")
 	_, _ = fmt.Fprintln(out, "  dreamina user_credit")
 	_, _ = fmt.Fprintln(out, "  dreamina list_task --gen_status=success")
 	_, _ = fmt.Fprintln(out, "  dreamina query_result --submit_id=3f6eb41f425d23a3")
