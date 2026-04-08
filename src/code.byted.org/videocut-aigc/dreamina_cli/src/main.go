@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"code.byted.org/videocut-aigc/dreamina_cli/cmd"
+	"code.byted.org/videocut-aigc/dreamina_cli/components/updater"
 	"code.byted.org/videocut-aigc/dreamina_cli/infra/envsetup"
 )
 
@@ -18,7 +19,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if err := cmd.ExecuteArgs(os.Args[1:]); err != nil {
+	updater.CheckUpdateAsync()
+	err := cmd.ExecuteArgs(os.Args[1:])
+	updater.PrintUpdateResult()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
