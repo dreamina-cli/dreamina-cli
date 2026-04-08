@@ -130,14 +130,14 @@ https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp/v
 2. 紧跟一个 `VersionInfo`（3 个 string 字段）
 3. 再比较 2 个 `string` 字段
 
-结合 `PrintUpdateResult` 对 `offset=80` 的 `len` 判断，可知最后一个 `string` 用作“可选输出信息”（可能是描述、提示或错误文本）。
+结合 `PrintUpdateResult` 对 `offset=80` 的 `len` 判断，以及其对应格式串为 `Release Notes:\n%s\n`，可知最后一个 `string` 用作“可选输出信息”，即发布说明。
 
 因此 `UpdateResult` 高置信度结构为：
 
 - `HasUpdate`（bool）
 - `RemoteVersion`（VersionInfo，含 3 个 string 字段）
 - `CurrentVersion`（string）
-- `Message`（string，非空则输出）
+- `Message`（string，非空则输出，格式为 `Release Notes:\n%s\n`）
 
 字段命名以源码为准，此处仅用于解释打印逻辑。
 
