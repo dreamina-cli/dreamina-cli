@@ -89,6 +89,17 @@ https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp/v
 
 `unexpected status code: %d`
 
+## 失败提示文案（已定位）
+
+`getLocalVersion` 与远端拉取流程中存在 3 条明确的中文提示文案，均建议用户“重新执行 curl 命令更新”：
+
+1. 从 CDN 下载失败：
+   - `从 CDN 下载 version.json 失败: %v，请重新执行curl命令更新`
+2. 创建目录失败：
+   - `创建目录失败，目录路径为 %s，错误信息: %v，请重新执行curl命令更新`
+3. 写入缓存失败：
+   - `写入 version.json 失败: %v，请重新执行curl命令更新`
+
 ## 本地缓存路径与格式
 
 `getLocalVersionFilePath()`：
@@ -118,9 +129,13 @@ https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp/v
 
 ### VersionInfo
 
-`type:.eq...VersionInfo` 依次比较 3 组 `string`（每组 16 字节），因此：
+`type:.eq...VersionInfo` 依次比较 3 组 `string`（每组 16 字节）。
 
-- `VersionInfo` 包含 **3 个 string 字段**（顺序未知）
+结合 `PrintUpdateResult` 的使用点可确定字段顺序：
+
+1. `version`（用于拼接 semver 比较）
+2. `release_notes`（用于输出 `Release Notes:\n%s\n`）
+3. `release_date`（当前未发现被使用）
 
 ### UpdateResult
 
@@ -130,14 +145,17 @@ https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp/v
 2. 紧跟一个 `VersionInfo`（3 个 string 字段）
 3. 再比较 2 个 `string` 字段
 
-结合 `PrintUpdateResult` 对 `offset=80` 的 `len` 判断，以及其对应格式串为 `Release Notes:\n%s\n`，可知最后一个 `string` 用作“可选输出信息”，即发布说明。
+结合 `PrintUpdateResult` 的字段访问，可确定两条 `string` 的语义：
+
+- 第一个 `string`（offset=56）用于输出 “current version”
+- 第二个 `string`（offset=72）用于输出错误信息（`fmt.Fprintln`），只有 `len != 0` 才打印
 
 因此 `UpdateResult` 高置信度结构为：
 
 - `HasUpdate`（bool）
 - `RemoteVersion`（VersionInfo，含 3 个 string 字段）
 - `CurrentVersion`（string）
-- `Message`（string，非空则输出，格式为 `Release Notes:\n%s\n`）
+- `ErrorMessage`（string，非空则输出）
 
 字段命名以源码为准，此处仅用于解释打印逻辑。
 
@@ -153,11 +171,11 @@ https://lf3-static.bytednsdoc.com/obj/eden-cn/psj_hupthlyk/ljhwZthlaukjlkulzlp/v
 }
 ```
 
-结合 `VersionInfo` 的 3 个 `string` 字段数量，可判断其字段对应：
+结合 `VersionInfo` 的 3 个 `string` 字段数量及使用点，可判断其字段对应：
 
 - `version`
-- `release_date`
 - `release_notes`
+- `release_date`
 
 ## 备注：与旧结论的修正
 
